@@ -214,3 +214,187 @@ skynet/
 ├── skynet-src/            # Skynet 核心代码
 └── test/                  # 测试用例
 ~~~ 
+
+## 5. 网关模块
+
+### 5.1 网关架构
+
+~~~mermaid
+graph TD
+    A[Client] --> B[Gate Service]
+    B --> C[Watchdog Service]
+    B --> D[Agent Service]
+    B --> I[Broker Service]
+    
+    C --> E[Login Logic]
+    C --> F[Session Management]
+    
+    D --> G[Game Logic]
+    D --> H[Message Processing]
+    
+    I --> J[Message Broadcasting]
+    I --> K[Channel Management]
+    I --> L[Message Filter]
+    
+    subgraph Direct Mode
+        C
+    end
+    
+    subgraph Agent Mode
+        D
+    end
+    
+    subgraph Broker Mode
+        I
+    end
+~~~
+
+### 5.2 网关模式
+
+网关服务支持三种工作模式:
+
+1. **直接模式 (Direct Mode)**
+   ~~~lua
+   -- 网关直接转发消息到watchdog
+   connection = {
+       fd = socket_id,
+       agent = nil,
+       client = nil,
+   }
+   ~~~
+   
+   特点:
+   - 所有消息直接转发给watchdog处理
+   - 适用于登录验证阶段
+   - 由watchdog统一管理连接状态
+   - 处理未认证客户端的消息
+
+2. **代理模式 (Agent Mode)**
+   ~~~lua
+   -- 网关将消息转发到指定agent
+   connection = {
+       fd = socket_id,
+       agent = agent_handle,
+       client = client_handle,
+   }
+   ~~~
+   
+   特点:
+   - 每个连接绑定一个专属agent服务
+   - 适用于游戏主逻辑阶段
+   - 支持消息双向流动
+   - 提供会话隔离
+   - 便于实现玩家专属逻辑
+
+3. **广播模式 (Broker Mode)**
+   ~~~lua
+   -- 网关将消息转发到broker服务
+   gate_service = {
+       broker = broker_handle,
+       client_tag = skynet.PTYPE_CLIENT,
+   }
+   ~~~
+   
+   特点:
+   - 所有消息转发到统一的broker服务
+   - 适用于聊天、广播等群发场景
+   - 支持消息过滤和分发
+   - 实现订阅发布模式
+
+### 5.3 工作流程
+
+~~~mermaid
+sequenceDiagram
+    participant C as Client
+    participant G as Gate
+    participant W as Watchdog
+    participant A as Agent
+
+    C->>G: Connect
+    G->>W: Report Connect
+    W->>G: Set Direct Mode
+    
+    C->>G: Login Request
+    G->>W: Forward Message
+    W->>A: Create Agent
+    W->>G: Bind Agent
+    
+    C->>G: Game Message
+    G->>A: Forward to Agent
+    A->>G: Response
+    G->>C: Send to Client
+~~~
+
+### 5.4 使用场景
+
+1. **直接模式使用场景**
+   - 登录验证阶段
+   - 简单的服务接入
+   - 需要集中处理的消息
+   - 连接初始化阶段
+
+2. **代理模式使用场景**
+   - 游戏主逻辑
+   - 需要保持玩家状态
+   - 复杂的业务处理
+   - 需要会话隔离
+   - 玩家专属逻辑
+
+3. **广播模式使用场景**
+   - 聊天系统
+   - 公告广播
+   - 世界频道
+   - 房间消息
+   - 群组通信
+
+### 5.5 配置示例
+
+~~~lua
+-- 网关配置
+local gate_conf = {
+    -- 基础配置
+    address = "0.0.0.0",
+    port = 8888,
+    maxclient = 1024,
+    
+    -- 工作模式
+    watchdog = watchdog_service,  -- 直接模式
+    agent = agent_pool,           -- 代理模式
+    broker = broker_service,      -- 广播模式
+    
+    -- 协议配置
+    proto = "lua",
+    name = "gate",
+    
+    -- 安全配置
+    timeout = 60,
+    max_connection = 1024,
+}
+~~~
+
+### 5.6 注意事项
+
+1. **模式切换**
+   - 同一连接可以在不同模式间切换
+   - 切换时需要正确清理旧模式的状态
+   - 避免消息处理冲突
+
+2. **资源管理**
+   - 及时清理断开的连接
+   - 控制最大连接数
+   - 管理Agent服务的生命周期
+   - 处理超时连接
+
+3. **安全考虑**
+   - 实现消息频率限制
+   - 添加消息验证机制
+   - 防止消息伪造
+   - 控制单IP连接数
+
+4. **性能优化**
+   - 使用消息队列缓冲
+   - 批量处理消息
+   - 合理设置缓冲区大小
+   - 监控网关性能指标
+
+// ... 后面内容保持不变 ...
