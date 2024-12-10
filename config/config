@@ -16,7 +16,7 @@ address = "127.0.0.1:2526"
 master = "127.0.0.1:2013"
 standalone = "0.0.0.0:2013"
 
-preload = "./examples/preload.lua"
+preload = "./game/preload.lua"
 app_root = "game"
 
 -- C服务配置

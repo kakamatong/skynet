@@ -56,19 +56,9 @@ skynet.start(function()
         skynet.error("Database service starting...")
         
         skynet.dispatch("lua", function(session, source, cmd, ...)
-            local f = CMD[cmd]
-            if f then
-                local ok, result = xpcall(function() return f(...) end, debug.traceback)
-                if ok then
-                    skynet.ret(skynet.pack(result))
-                else
-                    skynet.error("Database command error: " .. tostring(result))
-                    skynet.response()(false, result)
-                end
-            else
-                skynet.error("db_service unknown command " .. cmd)
-                skynet.response()(false, "unknown command")
-            end
+            local f = assert(CMD[cmd])
+            skynet.ret(skynet.pack(f(...)))
+
         end)
         
         if CMD.init() then
