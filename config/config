@@ -7,10 +7,10 @@ thread = 8
 logger = nil
 logpath = "./logs"
 harbor = 1
-start = "game/service/main"
+start = "main"
 bootstrap = "snlua bootstrap"
-daemon = "./game.pid"
-
+-- daemon = "./game.pid"
+debug_console_port = 18000
 -- 集群配置
 address = "127.0.0.1:2526"
 master = "127.0.0.1:2013"

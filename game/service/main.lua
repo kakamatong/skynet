@@ -3,9 +3,8 @@ local skynet = require "skynet"
 skynet.start(function()
     -- 初始化随机种子
     math.randomseed(os.time())
-    
     -- 启动DEBUG控制台
-    skynet.newservice("debug_console", 18000)
+    skynet.newservice("debug_console", skynet.getenv "debug_console_port")
     
     -- -- 启动数据库服务
     local db = skynet.newservice("db_service")
@@ -28,5 +27,5 @@ skynet.start(function()
     -- skynet.name(".chat", chat)
     
     -- 启动完成
-    skynet.error("Server started")
+    LOG.info("Server started")
 end) 
