@@ -281,7 +281,7 @@ graph TD
    
    特点:
    - 每个连接绑定一个专属agent服务
-   - 适用于游戏主逻辑阶段
+   - 适用于游戏主逻辑���段
    - 支持消息双向流动
    - 提供会话隔离
    - 便于实现玩家专属逻辑
@@ -397,4 +397,461 @@ local gate_conf = {
    - 合理设置缓冲区大小
    - 监控网关性能指标
 
-// ... 后面内容保持不变 ...
+## 6. 数据库模块
+
+### 6.1 数据库架构
+
+~~~mermaid
+graph TD
+    A[DB Manager] --> B[Connection Pool]
+    A --> C[Query Interface]
+    A --> D[Cache Layer]
+    
+    B --> E[MySQL Conn]
+    B --> F[Redis Conn]
+    B --> G[MongoDB Conn]
+    
+    C --> H[SQL Builder]
+    C --> I[ORM Mapper]
+    
+    D --> J[Local Cache]
+    D --> K[Redis Cache]
+~~~
+
+### 6.2 连接池管理
+
+~~~lua
+-- 数据库连接池配置
+local db_conf = {
+    mysql = {
+        host = "127.0.0.1",
+        port = 3306,
+        user = "root",
+        password = "password",
+        database = "game",
+        pool_size = 8,
+        max_packet = 1024 * 1024
+    },
+    
+    redis = {
+        host = "127.0.0.1",
+        port = 6379,
+        auth = "password",
+        db = 0,
+        pool_size = 16
+    },
+    
+    mongodb = {
+        url = "mongodb://localhost:27017",
+        database = "game",
+        pool_size = 4
+    }
+}
+
+-- 连接池状态
+pool_status = {
+    total = 0,       -- 总连接数
+    active = 0,      -- 活跃连接数
+    idle = 0,        -- 空闲连接数
+    waiting = 0      -- 等待连接数
+}
+~~~
+
+### 6.3 查询接口
+
+1. **MySQL接口**
+~~~lua
+-- 同步查询
+local function query(sql)
+    local db = mysql_pool.acquire()
+    local res = db:query(sql)
+    mysql_pool.release(db)
+    return res
+end
+
+-- 异步查询
+local function async_query(sql)
+    return skynet.call(db_service, "lua", "query", sql)
+end
+
+-- 事务处理
+local function transaction(func)
+    local db = mysql_pool.acquire()
+    db:query("START TRANSACTION")
+    local ok, err = pcall(func, db)
+    if ok then
+        db:query("COMMIT")
+    else
+        db:query("ROLLBACK")
+    end
+    mysql_pool.release(db)
+    return ok, err
+end
+~~~
+
+2. **Redis接口**
+~~~lua
+-- 基础操作
+local function redis_cmd(cmd, ...)
+    local db = redis_pool.acquire()
+    local res = db[cmd](db, ...)
+    redis_pool.release(db)
+    return res
+end
+
+-- 管道操作
+local function pipeline(cmds)
+    local db = redis_pool.acquire()
+    db:init_pipeline()
+    for _, cmd in ipairs(cmds) do
+        db[cmd[1]](db, table.unpack(cmd, 2))
+    end
+    local res = db:commit_pipeline()
+    redis_pool.release(db)
+    return res
+end
+~~~
+
+3. **MongoDB接口**
+~~~lua
+-- 文档操作
+local function mongo_op(collection, op, ...)
+    local db = mongo_pool.acquire()
+    local coll = db[collection]
+    local res = coll[op](coll, ...)
+    mongo_pool.release(db)
+    return res
+end
+~~~
+
+### 6.4 缓存策略
+
+~~~lua
+-- 缓存配置
+local cache_conf = {
+    -- 本地缓存
+    local_cache = {
+        capacity = 10000,    -- 最大容量
+        expire = 300,        -- 过期时间(秒)
+        update_factor = 0.2  -- 更新因子
+    },
+    
+    -- Redis缓存
+    redis_cache = {
+        prefix = "game:",    -- 键前缀
+        expire = 3600,       -- 过期时间(秒)
+        compress = true      -- 是否压缩
+    }
+}
+
+-- 缓存接口
+local cache = {
+    -- 获取数据(先查本地,再查Redis,最后查DB)
+    get = function(key)
+        local data = local_cache.get(key)
+        if not data then
+            data = redis_cache.get(key)
+            if not data then
+                data = db_query(key)
+                redis_cache.set(key, data)
+            end
+            local_cache.set(key, data)
+        end
+        return data
+    end,
+    
+    -- 更新数据(同时更新本地和Redis)
+    set = function(key, value)
+        local_cache.set(key, value)
+        redis_cache.set(key, value)
+    end,
+    
+    -- 删除数据
+    del = function(key)
+        local_cache.del(key)
+        redis_cache.del(key)
+    end
+}
+~~~
+
+### 6.5 性能监控
+
+~~~lua
+-- 性能指标收集
+local metrics = {
+    -- 查询统计
+    query_stats = {
+        total = 0,       -- 总查询数
+        success = 0,     -- 成功数
+        failed = 0,      -- 失败数
+        timeout = 0      -- 超时数
+    },
+    
+    -- 响应时间
+    response_time = {
+        avg = 0,         -- 平均响应时间
+        max = 0,         -- 最大响应时间
+        min = 0          -- 最小响应时间
+    },
+    
+    -- 连接池状态
+    pool_stats = {
+        mysql = pool_status,
+        redis = pool_status,
+        mongodb = pool_status
+    }
+}
+
+-- 监控报告生成
+local function gen_report()
+    return {
+        timestamp = os.time(),
+        metrics = metrics,
+        warnings = {},
+        errors = {}
+    }
+end
+~~~
+
+### 6.6 注意事项
+
+1. **连接管理**
+   - 合理设置连接池大小
+   - 及时释放空闲连接
+   - 处理连接超时
+   - 实现连接重试机制
+
+2. **查询优化**
+   - 使用预处理语句
+   - 合理使用索引
+   - 控制查询复杂度
+   - 避免大事务
+
+3. **缓存使用**
+   - 设置合理的过期时间
+   - 实现缓存预热
+   - 防止缓存雪崩
+   - 控制缓存数据大小
+
+4. **异常处理**
+   - 处理连接断开
+   - 处理查询超时
+   - 实现故障转移
+   - 记录错误日志
+
+## 7. Sproto协议
+
+### 7.1 协议定义
+
+协议文件通常存放在 `proto/` 目录下，使用 `.sproto` 扩展名。
+
+~~~lua
+-- proto/game.sproto
+-- 基础数据类型
+.package {
+    type 0 : integer
+    type 1 : boolean
+    type 2 : string
+    type 3 : binary
+    type 4 : double
+}
+
+-- 复合类型定义
+.Position {
+    x 0 : integer
+    y 1 : integer
+    z 2 : integer
+}
+
+.Player {
+    id 0 : integer
+    name 1 : string
+    level 2 : integer
+    pos 3 : Position
+    items 4 : *integer     # 数组类型使用*标记
+    attrs 5 : *string      # 字符串数组
+}
+
+-- 协议定义
+login 1 {      # 请求协议号为1
+    request {  # 请求结构
+        username 0 : string
+        password 1 : string
+        device 2 : string
+    }
+    response { # 响应结构
+        code 0 : integer
+        uid 1 : integer
+        token 2 : string
+        error 3 : string
+    }
+}
+
+move 2 {       # 协议号为2
+    request {
+        pos 0 : Position
+        speed 1 : integer
+    }
+    response {
+        code 0 : integer
+        current_pos 1 : Position
+    }
+}
+
+chat 3 {
+    request {
+        type 0 : integer     # 1:私聊 2:公频 3:队伍
+        target 1 : integer   # 目标玩家ID
+        content 2 : string   # 聊天内容
+    }
+    response {
+        code 0 : integer
+        timestamp 1 : integer
+    }
+}
+~~~
+
+### 7.2 协议加载
+
+~~~lua
+local sproto = require "sproto"
+local sprotoparser = require "sprotoparser"
+
+-- 加载协议文件
+local function load_protocol()
+    local f = io.open("proto/game.sproto", "r")
+    local content = f:read("*a")
+    f:close()
+    
+    -- 解析协议
+    local sp = sprotoparser.parse(content)
+    -- 创建协议对象
+    local proto = sproto.new(sp)
+    
+    return proto
+end
+
+-- 创建协议主机(用于RPC)
+local function create_proto_host()
+    local proto = load_protocol()
+    -- 创建host(用于请求和响应)
+    local host = sproto.new(proto):host "package"
+    -- 创建request对象(用于编码请求)
+    local request = host:attach(proto)
+    
+    return host, request
+end
+~~~
+
+### 7.3 协议使用
+
+1. **服务端处理**
+~~~lua
+local host, proto_request = create_proto_host()
+
+-- 消息分发
+function handle_message(msg, sz)
+    -- 解包消息
+    local type, name, request, response = host:dispatch(msg, sz)
+    
+    if type == "REQUEST" then
+        -- 处理请求
+        local ok, result = pcall(handle_request, name, request)
+        -- 返回响应
+        if ok then
+            return response(result)
+        else
+            return response({ code = 1, error = result })
+        end
+    else
+        -- 处理响应
+        handle_response(name, response)
+    end
+end
+
+-- 请求处理
+function handle_request(name, args)
+    if name == "login" then
+        return {
+            code = 0,
+            uid = 10000,
+            token = "xxx",
+        }
+    elseif name == "move" then
+        return {
+            code = 0,
+            current_pos = args.pos
+        }
+    end
+end
+~~~
+
+2. **客户端调用**
+~~~lua
+local host, request = create_proto_host()
+
+-- 发送请求
+local function send_request(name, args)
+    -- 编码请求
+    local msg = request(name, args)
+    -- 发送消息
+    socket.send(connection, msg)
+end
+
+-- 登录请求示例
+send_request("login", {
+    username = "player1",
+    password = "123456",
+    device = "android"
+})
+
+-- 移动请求示例
+send_request("move", {
+    pos = {
+        x = 100,
+        y = 200,
+        z = 0
+    },
+    speed = 10
+})
+~~~
+
+### 7.4 协议规范
+
+1. **类型定义规则**
+   - 基础类型: integer, boolean, string, binary, double
+   - 数组类型: 使用*前缀标记
+   - 复合类型: 使用.开头定义
+   - 字段编号: 从0开始的整数
+
+2. **协议定义规则**
+   - 协议号: 唯一的正整数
+   - 请求结构: request块
+   - 响应结构: response块
+   - 可选字段: 字段名后加?标记
+
+3. **命名规范**
+   - 类型名: 大写开头的驼峰命名
+   - 协议名: 小写字母加下划线
+   - 字段名: 小写字母加下划线
+   - 注释: 使用#号
+
+### 7.5 注意事项
+
+1. **性能考虑**
+   - 协议预编译
+   - 复用协议对象
+   - 合理设计数据结构
+   - 避免过大的消息包
+
+2. **版本管理**
+   - 协议版本号管理
+   - 向下兼容
+   - 废弃字段处理
+   - 协议升级策略
+
+3. **调试方法**
+   - 协议分析工具
+   - 消息跟踪
+   - 数据包打印
+   - 错误处理
