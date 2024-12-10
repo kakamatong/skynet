@@ -1,0 +1,7 @@
+-- config/config.path
+root = "./"
+luaservice = root.."service/?.lua;"..root.."game/service/?.lua"
+lualoader = root.."lualib/loader.lua"
+lua_path = root.."lualib/?.lua;"..root.."lualib/?/init.lua;"..root.."game/lualib/?.lua;"..root.."game/?.lua;"..root.."config/?.lua;"
+lua_cpath = root.."luaclib/?.so;"
+snax = root.."service/?.lua;"..root.."test/?.lua;"..root.."game/?.lua" 

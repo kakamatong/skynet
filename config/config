@@ -1,0 +1,23 @@
+-- config/config
+
+include "config.path"
+
+-- 基础配置
+thread = 8
+logger = nil
+logpath = "./logs"
+harbor = 1
+start = "game/service/main"
+bootstrap = "snlua bootstrap"
+daemon = "./game.pid"
+
+-- 集群配置
+address = "127.0.0.1:2526"
+master = "127.0.0.1:2013"
+standalone = "0.0.0.0:2013"
+
+preload = "./examples/preload.lua"
+app_root = "game"
+
+-- C服务配置
+cpath = root.."cservice/?.so"
