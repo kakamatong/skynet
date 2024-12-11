@@ -17,6 +17,7 @@ function CMD.init()
             password = CONFIG.database.mysql.password,
             max_packet_size = CONFIG.database.mysql.max_packet_size,
             timeout = 1000,
+            auth_plugin = "mysql_native_password",
             on_connect = function(db)
                 db:query("set charset utf8")
             end
