@@ -1,0 +1,28 @@
+# 公共数据结构定义
+.package {
+    type 0 : integer
+    type 1 : string
+    type 2 : boolean
+    type 3 : binary
+}
+
+# 基础响应结构
+.Response {
+    code 0 : integer     # 响应码
+    msg 1 : string      # 错误信息
+}
+
+# 位置信息
+.Position {
+    x 0 : integer
+    y 1 : integer
+    z 2 : integer
+}
+
+# 玩家基本信息
+.PlayerInfo {
+    uid 0 : integer
+    name 1 : string
+    level 2 : integer
+    exp 3 : integer
+} 

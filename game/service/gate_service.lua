@@ -3,14 +3,28 @@ require "skynet.manager"
 local socket = require "skynet.socket"
 local sproto = require "sproto"
 local netpack = require "skynet.netpack"
+local crypt = require "skynet.crypt"
+local aes = require "aes" -- 需要实现AES加密模块
 
 local WATCHDOG -- watchdog 服务
 local PROTO -- 协议对象
 local connections = {} -- 连接管理 {fd = {fd=,addr=,agent=,client=,status=}}
-local forwarding = {} -- 消息转发表 {msgname = service_name}
 
 local CMD = {}
 local handler = {}
+
+-- 加密密钥
+local SECRET_KEY = "your_secret_key"
+
+-- 解密消息
+local function decrypt_message(msg)
+    return aes.decrypt(msg, SECRET_KEY)
+end
+
+-- 加密消息
+local function encrypt_message(msg)
+    return aes.encrypt(msg, SECRET_KEY)
+end
 
 -- 初始化协议
 local function init_proto()
@@ -19,24 +33,28 @@ local function init_proto()
     f:close()
     
     PROTO = sproto.parse(content)
-    
-    -- 初始化消息转发表
-    forwarding = {
-        ["auth"] = ".login",           -- 登录认证
-        ["heartbeat"] = ".login",      -- 心跳
-        ["logout"] = ".login",         -- 登出
-        ["game.enter"] = ".game",
-        ["chat.send"] = ".chat",
-        -- 添加更多消息路由
-    }
 end
 
 -- 消息转发
 local function forward_message(fd, msg, sz)
     local message = netpack.tostring(msg, sz)
+    
+    -- 解密消息
+    message = decrypt_message(message)
+    
     local proto_id, proto_msg = string.unpack(">I2", message)
     
-    -- ���析协议
+    -- 根据协议ID判断服务类型
+    local service_name
+    if proto_id < 10000 then
+        service_name = ".login"
+    elseif proto_id < 20000 then
+        service_name = ".game"
+    else
+        service_name = ".chat"
+    end
+    
+    -- 解析协议
     local proto_name = PROTO:decode_message_name(proto_id)
     local proto_content = PROTO:decode_message(proto_id, proto_msg)
     
@@ -44,32 +62,19 @@ local function forward_message(fd, msg, sz)
     local conn = connections[fd]
     proto_content.mode = conn.mode
     
-    -- 查找目标服务
-    local service_name = forwarding[proto_name]
-    if not service_name then
-        LOG.error("Unknown message type: %s", proto_name)
-        return
-    end
-    
     -- 转发消息
-    local conn = connections[fd]
     if conn.agent then
-        -- 已经有agent，直接转发
         skynet.redirect(conn.agent, conn.client, "client", fd, msg, sz)
     else
-        -- 没有agent，通过目标服务处理
         local service = skynet.queryservice(service_name)
         local ok, result = pcall(skynet.call, service, "lua", "handle_message", 
             fd, proto_name, proto_content)
         
-        if ok then
-            -- 发送响应
-            if result then
-                local response = PROTO:encode_message(proto_name .. "_response", result)
-                socket.write(fd, response)
-            end
-        else
-            LOG.error("Forward message failed: %s", result)
+        if ok and result then
+            -- 加密响应
+            local response = PROTO:encode_message(proto_name .. "_response", result)
+            response = encrypt_message(response)
+            socket.write(fd, response)
         end
     end
 end
@@ -191,7 +196,7 @@ skynet.start(function()
                     CMD.kick(fd, "heartbeat timeout")
                 end
             end
-            skynet.sleep(100) -- 每10秒���查一次
+            skynet.sleep(100) -- 每10秒检查一次
         end
     end)
     
