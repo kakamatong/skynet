@@ -19,9 +19,12 @@ skynet.start(function()
     local login_ws = skynet.newservice("login_service", "websocket")
     skynet.name(".login_ws", login_ws)
     
-    -- 启动网关服务
-    -- local gate = skynet.newservice("gate_service")
-    -- skynet.name(".gate", gate)
+    -- 启动网关相关服务
+    local watchdog = skynet.newservice("watchdog")
+    skynet.name(".watchdog", watchdog)
+    
+    local gate = skynet.newservice("gate_service")
+    skynet.name(".gate", gate)
     
     -- 启动游戏服务
     -- local game = skynet.newservice("game_service")
