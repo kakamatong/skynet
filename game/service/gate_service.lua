@@ -36,9 +36,13 @@ local function forward_message(fd, msg, sz)
     local message = netpack.tostring(msg, sz)
     local proto_id, proto_msg = string.unpack(">I2", message)
     
-    -- 解析协议
+    -- ���析协议
     local proto_name = PROTO:decode_message_name(proto_id)
     local proto_content = PROTO:decode_message(proto_id, proto_msg)
+    
+    -- 添加连接类型
+    local conn = connections[fd]
+    proto_content.mode = conn.mode
     
     -- 查找目标服务
     local service_name = forwarding[proto_name]
@@ -187,7 +191,7 @@ skynet.start(function()
                     CMD.kick(fd, "heartbeat timeout")
                 end
             end
-            skynet.sleep(100) -- 每10秒检查一次
+            skynet.sleep(100) -- 每10秒���查一次
         end
     end)
     

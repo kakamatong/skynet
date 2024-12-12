@@ -11,13 +11,9 @@ skynet.start(function()
     local db = skynet.newservice("db_service")
     skynet.name(".db", db)
     
-    -- 启动登录服务(Socket)
-    local login = skynet.newservice("login_service", "socket")
+    -- 启动登录服务
+    local login = skynet.newservice("login_service")
     skynet.name(".login", login)
-    
-    -- 启动登录服务(WebSocket)
-    local login_ws = skynet.newservice("login_service", "websocket")
-    skynet.name(".login_ws", login_ws)
     
     -- 启动网关相关服务
     local watchdog = skynet.newservice("watchdog")

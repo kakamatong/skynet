@@ -2,13 +2,11 @@ local skynet = require "skynet"
 require "skynet.manager"
 local crypt = require "skynet.crypt"
 
-local MODE = ...  -- 启动参数，可以是 "socket" 或 "websocket"
-local users = {}  -- 在线用户表 {[uid] = {fd = fd, login_time = time, ...}}
-
+local users = {}  -- 在线用户表 {[uid] = {fd = fd, login_time = time, mode = "socket"/"websocket" ...}}
 local CMD = {}
 
 -- 用户认证
-function CMD.auth(fd, msg)
+function CMD.auth(fd, msg, mode)
     local username = msg.username
     local password = msg.password
     
@@ -40,6 +38,7 @@ function CMD.auth(fd, msg)
     -- 记录用户登录状态
     users[user.uid] = {
         fd = fd,
+        mode = mode,  -- 记录连接类型
         login_time = skynet.now(),
         username = username,
         last_heartbeat = skynet.now()
@@ -49,42 +48,46 @@ function CMD.auth(fd, msg)
     local watchdog = skynet.queryservice(".watchdog")
     local agent = skynet.call(watchdog, "lua", "assign_agent", fd, {
         uid = user.uid,
-        username = username
+        username = username,
+        mode = mode
     })
     
     -- 返回登录成功
     return {
         code = 0,
         uid = user.uid,
-        token = crypt.base64encode(string.format("%s:%d", username, user.uid))
+        token = crypt.base64encode(string.format("%s:%d:%s", username, user.uid, mode))
     }
 end
 
 -- 心跳处理
-function CMD.heartbeat(uid)
+function CMD.heartbeat(uid, mode)
     local user = users[uid]
-    if user then
+    if user and user.mode == mode then
         user.last_heartbeat = skynet.now()
         return { code = 0 }
     end
-    return { code = 1, msg = "User not found" }
+    return { code = 1, msg = "User not found or mode mismatch" }
 end
 
 -- 用户登出
-function CMD.logout(uid)
-    if users[uid] then
-        local fd = users[uid].fd
+function CMD.logout(uid, mode)
+    local user = users[uid]
+    if user and user.mode == mode then
+        local fd = user.fd
         users[uid] = nil
         return { code = 0 }
     end
-    return { code = 1, msg = "User not found" }
+    return { code = 1, msg = "User not found or mode mismatch" }
 end
 
 -- 获取在线用户数
-function CMD.online_count()
+function CMD.online_count(mode)
     local count = 0
-    for _ in pairs(users) do
-        count = count + 1
+    for _, user in pairs(users) do
+        if not mode or user.mode == mode then
+            count = count + 1
+        end
     end
     return { count = count }
 end
