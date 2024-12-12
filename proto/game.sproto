@@ -1,0 +1,44 @@
+.package {
+    type 0 : integer
+    type 1 : string
+    type 2 : boolean
+}
+
+# 登录请求
+auth 1 {
+    request {
+        username 0 : string
+        password 1 : string
+        device 2 : string
+        version 3 : string
+    }
+    response {
+        code 0 : integer
+        uid 1 : integer
+        token 2 : string
+        msg 3 : string
+    }
+}
+
+# 心跳包
+heartbeat 2 {
+    request {
+        uid 0 : integer
+        timestamp 1 : integer
+    }
+    response {
+        code 0 : integer
+        timestamp 1 : integer
+    }
+}
+
+# 登出请求
+logout 3 {
+    request {
+        uid 0 : integer
+    }
+    response {
+        code 0 : integer
+        msg 1 : string
+    }
+} 

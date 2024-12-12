@@ -22,7 +22,9 @@ local function init_proto()
     
     -- 初始化消息转发表
     forwarding = {
-        ["login.auth"] = ".login",
+        ["auth"] = ".login",           -- 登录认证
+        ["heartbeat"] = ".login",      -- 心跳
+        ["logout"] = ".login",         -- 登出
         ["game.enter"] = ".game",
         ["chat.send"] = ".chat",
         -- 添加更多消息路由
@@ -181,7 +183,7 @@ skynet.start(function()
     skynet.fork(function()
         while true do
             for fd, conn in pairs(connections) do
-                if skynet.now() - conn.last_heartbeat > 600 * 100 then -- 60秒超时
+                if skynet.now() - conn.last_heartbeat > 100 * 100 then -- 10秒超时
                     CMD.kick(fd, "heartbeat timeout")
                 end
             end
