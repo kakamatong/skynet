@@ -63,7 +63,7 @@ cluster.reload {
 }
 ~~~
 
-### 3.2 集群���用
+### 3.2 集群用
 ~~~lua
 -- 远程调用
 cluster.call("node1", "@service", "cmd", ...)

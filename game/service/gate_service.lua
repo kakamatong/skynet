@@ -179,14 +179,27 @@ skynet.start(function()
     init_proto()
     
     -- 启动监听
-    local port = tonumber(skynet.getenv "gate_port") or 8888
-    local listenfd = socket.listen("0.0.0.0", port)
-    LOG.info("Gate service listening on port %d", port)
-    
-    socket.start(listenfd, function(fd, addr)
-        socket.start(fd)
-        handler.connect(fd, addr)
-    end)
+    local socket_port = CONFIG.game_server.socket_port
+    local websocket_port = CONFIG.game_server.websocket_port
+
+    -- 启动Socket监听
+    local listenfd = socket.listen("0.0.0.0", socket_port)
+    LOG.info("Gate service(Socket) listening on port %d", socket_port)
+
+    -- 启动WebSocket监听
+    local websocket = require "http.websocket"
+    local handle = websocket.listen("0.0.0.0", websocket_port, {
+        open = function(ws)
+            handler.connect(ws.id, ws.addr)
+        end,
+        message = function(ws, msg)
+            handler.message(ws.id, msg, #msg)
+        end,
+        close = function(ws)
+            handler.disconnect(ws.id)
+        end,
+    })
+    LOG.info("Gate service(WebSocket) listening on port %d", websocket_port)
     
     -- 启动心跳检查
     skynet.fork(function()
