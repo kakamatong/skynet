@@ -21,7 +21,7 @@ skynet.start(function()
     
     local gate = skynet.newservice("gate_service")
     skynet.name(".gate", gate)
-    
+    skynet.call(watchdog, "lua", "register_gate", gate)
     -- 启动游戏服务
     -- local game = skynet.newservice("game_service")
     -- skynet.name(".game", game)

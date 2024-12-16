@@ -42,10 +42,12 @@ function CMD.assign_agent(fd, msg)
     return agent
 end
 
-skynet.start(function()
+function CMD.register_gate(gate_service)
     -- 启动网关
-    gate = skynet.newservice("gate_service")
-    
+    gate = gate_service
+end
+
+skynet.start(function()
     -- 注册socket消息处理
     skynet.dispatch("lua", function(session, source, cmd, subcmd, ...)
         if cmd == "socket" then
@@ -59,4 +61,5 @@ skynet.start(function()
     end)
     
     skynet.register ".watchdog"
+    LOG.info("watchdog started")
 end) 

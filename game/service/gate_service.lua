@@ -175,7 +175,7 @@ skynet.start(function()
     }
     
     -- 初始化
-    WATCHDOG = skynet.queryservice("watchdog")
+    WATCHDOG = skynet.queryservice(".watchdog")
     init_proto()
     
     -- 启动监听
