@@ -217,7 +217,6 @@ skynet.start(function()
     }
     
     -- 初始化
-    --WATCHDOG = skynet.queryservice(".watchdog")
     init_proto()
     
     -- 启动监听
@@ -227,163 +226,78 @@ skynet.start(function()
     -- 启动Socket监听
     local listenfd = socket.listen("0.0.0.0", socket_port)
     LOG.info("Gate service(Socket) listening on port %d", socket_port)
+    
+    socket.start(listenfd, function(fd, addr)
+        handler.connect(fd, addr)
+        socket.start(fd)
+        socket.onclose(fd, function()
+            handler.disconnect(fd)
+        end)
+    end)
 
     -- WebSocket处理函数
     local handle = {}
     
-    -- 处理WebSocket连接打开
     function handle.connect(ws)
         local fd = ws.id
-        LOG.info("New websocket connected: %s, fd: %d", ws.addr, fd)
-        
-        connections[fd] = {
-            fd = fd,
-            addr = ws.addr,
-            status = "connected",
-            connect_time = skynet.now(),
-            last_heartbeat = skynet.now(),
-            ws = ws
-        }
-        
-        local watchdog = skynet.queryservice(".watchdog")
-        skynet.send(watchdog, "lua", "client_connected", fd, ws.addr)
+        handler.connect(fd, ws.addr)
+        connections[fd].ws = ws  -- 保存 websocket 实例
     end
     
-    -- 处理WebSocket消息
     function handle.message(ws, message)
-        local fd = ws.id
-        local conn = connections[fd]
-        if not conn then
-            LOG.error("Connection not found: fd: %d", fd)
-            return
-        end
-        
-        -- 更新心跳时间
-        conn.last_heartbeat = skynet.now()
-        
-        -- 将消息转换为统一格式
+        -- 将 WebSocket 消息转换为统一格式
         local msg = string.pack(">s2", message)
         local sz = #msg
-        
-        -- 使用统一的消息处理逻辑
-        handler.message(fd, msg, sz)
+        handler.message(ws.id, msg, sz)
     end
     
-    -- 处理WebSocket连接关闭
     function handle.close(ws, code, reason)
-        local fd = ws.id
-        LOG.info("Websocket closed: fd: %d, code: %s, reason: %s", fd, code, reason)
-        handler.disconnect(fd)
+        handler.disconnect(ws.id)
     end
     
-    -- 处理WebSocket错误
-    function handle.error(ws, error_msg)
-        local fd = ws.id
-        LOG.error("Websocket error: fd: %d, error: %s", fd, error_msg)
-        handler.disconnect(fd)
+    function handle.error(ws, err)
+        LOG.error("WebSocket error: fd=%d, error=%s", ws.id, err)
+        handler.disconnect(ws.id)
     end
-    
-    -- 处理WebSocket连接
-    local function handle_ws_socket(fd, addr)
-        socket.start(fd)
-        local read = sockethelper.readfunc(fd)
-        local write = sockethelper.writefunc(fd)
-        
-        local code, url, method, header = httpd.read_request(read)
-        if not code then
-            socket.close(fd)
-            return
-        end
-        
-        if header and header.upgrade ~= "websocket" then
-            write("HTTP/1.1 400 Bad Request\r\n\r\n")
-            socket.close(fd)
-            return
-        end
-        
-        local ws = websocket.new(fd, header, read, write, addr)
-        if not ws then
-            socket.close(fd)
-            return
-        end
-        
-        -- 处理连接建立
-        local fd = ws.id
-        LOG.info("New websocket connected: %s, fd: %d", addr, fd)
-        
-        connections[fd] = {
-            fd = fd,
-            addr = addr,
-            status = "connected",
-            connect_time = skynet.now(),
-            last_heartbeat = skynet.now(),
-            ws = ws
-        }
-        
-        local watchdog = skynet.queryservice(".watchdog")
-        skynet.send(watchdog, "lua", "client_connected", fd, addr)
-        
-        -- 开始接收消息
-        while true do
-            local success, message = pcall(ws.read, ws)
-            if not success or not message then
-                break
-            end
-            
-            -- 处理消息
-            local fd = ws.id
-            local conn = connections[fd]
-            if not conn then
-                break
-            end
-            
-            -- 更新心跳时间
-            conn.last_heartbeat = skynet.now()
-            
-            -- 将消息转换为统一格式
-            local msg = string.pack(">s2", message)
-            local sz = #msg
-            
-            -- 使用统一的消息处理逻辑
-            handler.message(fd, msg, sz)
-        end
-        
-        -- 连接断开
-        handler.disconnect(fd)
-        socket.close(fd)
-    end
-    
+
     -- 启动WebSocket监听
     local ws_listen_fd = socket.listen("0.0.0.0", websocket_port)
     LOG.info("Gate service(WebSocket) listening on port %d", websocket_port)
     
     socket.start(ws_listen_fd, function(fd, addr)
-        skynet.fork(handle_ws_socket, fd, addr)
+        local ok, err = websocket.accept(fd, nil, handle)
+        if not ok then
+            LOG.error("WebSocket accept failed: %s", err)
+            socket.close(fd)
+        end
     end)
-    
-    -- 修改socket.write函数，支持WebSocket
+
+    -- 重写 socket.write 支持 WebSocket
     local _socket_write = socket.write
     socket.write = function(fd, msg)
         local conn = connections[fd]
         if conn and conn.ws then
-            conn.ws:write_binary(msg)
+            -- 使用 WebSocket 发送
+            conn.ws:send_binary(msg)
         else
+            -- 使用普通 Socket 发送
             _socket_write(fd, msg)
         end
     end
-    
+
     -- 启动心跳检查
     skynet.fork(function()
         while true do
+            local now = skynet.now()
             for fd, conn in pairs(connections) do
-                if skynet.now() - conn.last_heartbeat > 100 * 100 then -- 10秒超时
+                if now - conn.last_heartbeat > 100 * 100 then -- 10秒超时
                     CMD.kick(fd, "heartbeat timeout")
                 end
             end
             skynet.sleep(100) -- 每10秒检查一次
         end
     end)
-    
+
     -- 注册命令处理
     skynet.dispatch("lua", function(session, source, cmd, ...)
         local f = CMD[cmd]
