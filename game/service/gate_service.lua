@@ -82,6 +82,15 @@ local function forward_message(fd, msg, sz)
     end
 end
 
+local function callWatchdog(subcmd,  ...)
+    local watchdog = skynet.localname(".watchdog")
+    if watchdog then
+        skynet.call(watchdog, 'lua', subcmd, ...)
+    else
+        LOG.error("Watchdog not found")
+    end
+end
+
 -- 处理客户端连接
 function handler.connect(fd, addr)
     LOG.info("New client connected: %s, fd: %d", addr, fd)
@@ -93,8 +102,7 @@ function handler.connect(fd, addr)
         connect_time = skynet.now(),
         last_heartbeat = skynet.now(),
     }
-    local watchdog = skynet.queryservice(".watchdog")
-    skynet.send(watchdog, "lua", "client_connected", fd, addr)
+    callWatchdog("socket", "client_connected", fd, addr)
 end
 
 -- 处理客户端断开
@@ -108,8 +116,7 @@ function handler.disconnect(fd)
         end
         connections[fd] = nil
     end
-    local watchdog = skynet.queryservice(".watchdog")
-    skynet.send(watchdog, "lua", "client_disconnected", fd)
+    callWatchdog("socket", "client_disconnected", fd)
 end
 
 -- 处理客户端消息

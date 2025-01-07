@@ -53,6 +53,7 @@ skynet.start(function()
         if cmd == "socket" then
             local f = SOCKET[subcmd]
             f(...)
+            skynet.ret()
             -- socket api don't need return
         else
             local f = assert(CMD[cmd])
