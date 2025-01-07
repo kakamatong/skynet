@@ -238,36 +238,50 @@ skynet.start(function()
     -- WebSocket处理函数
     local handle = {}
     
-    function handle.connect(ws)
-        local fd = ws.id
-        handler.connect(fd, ws.addr)
-        connections[fd].ws = ws  -- 保存 websocket 实例
+    function handle.connect(id)
+        local addr = websocket.addrinfo(id)
+        handler.connect(id, addr)
+        -- 注意: connections[id] 在 handler.connect 中创建
+        connections[id].ws = true  -- 标记为 websocket 连接
     end
     
-    function handle.message(ws, message)
+    function handle.message(id, message, op)
         -- 将 WebSocket 消息转换为统一格式
         local msg = string.pack(">s2", message)
         local sz = #msg
-        handler.message(ws.id, msg, sz)
+        handler.message(id, msg, sz)
     end
     
-    function handle.close(ws, code, reason)
-        handler.disconnect(ws.id)
+    function handle.close(id, code, reason)
+        LOG.info("WebSocket closed: fd=%d, code=%s, reason=%s", id, code, reason)
+        handler.disconnect(id)
     end
     
-    function handle.error(ws, err)
-        LOG.error("WebSocket error: fd=%d, error=%s", ws.id, err)
-        handler.disconnect(ws.id)
+    function handle.error(id, err)
+        LOG.error("WebSocket error: fd=%d, error=%s", id, err)
+        handler.disconnect(id)
     end
 
-    -- 可选: 添加 warning 处理
-    function handle.warning(ws, size)
-        LOG.warn("WebSocket buffer warning: fd=%d, size=%d", ws.id, size)
+    function handle.warning(id, size)
+        LOG.warn("WebSocket buffer warning: fd=%d, size=%d", id, size)
     end
 
-    -- 可选: 添加 handshake 处理
-    function handle.handshake(ws, header, url)
-        LOG.info("WebSocket handshake: fd=%d, url=%s", ws.id, url)
+    function handle.handshake(id, header, url)
+        LOG.info("WebSocket handshake: fd=%d, url=%s", id, url)
+        -- 可以在这里处理 header 中的额外信息
+    end
+
+    -- 重写 socket.write 支持 WebSocket
+    local _socket_write = socket.write
+    socket.write = function(fd, msg)
+        local conn = connections[fd]
+        if conn and conn.ws then
+            -- 使用 websocket.write 发送二进制消息
+            websocket.write(fd, msg, "binary")
+        else
+            -- 使用普通 Socket 发送
+            _socket_write(fd, msg)
+        end
     end
 
     -- 启动WebSocket监听
@@ -275,7 +289,6 @@ skynet.start(function()
     LOG.info("Gate service(WebSocket) listening on port %d", websocket_port)
     
     socket.start(ws_listen_fd, function(fd, addr)
-        -- 正确使用 websocket.accept
         local ok, err = websocket.accept(
             fd,                -- socket id
             handle,           -- 处理函数表
@@ -288,19 +301,6 @@ skynet.start(function()
             socket.close(fd)
         end
     end)
-
-    -- 重写 socket.write 支持 WebSocket
-    local _socket_write = socket.write
-    socket.write = function(fd, msg)
-        local conn = connections[fd]
-        if conn and conn.ws then
-            -- 使用 WebSocket 发送
-            websocket.write(fd, msg, "binary")  -- 使用 websocket.write 替代直接调用 ws:send_binary
-        else
-            -- 使用普通 Socket 发送
-            _socket_write(fd, msg)
-        end
-    end
 
     -- 启动心跳检查
     skynet.fork(function()
