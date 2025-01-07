@@ -260,14 +260,31 @@ skynet.start(function()
         handler.disconnect(ws.id)
     end
 
+    -- 可选: 添加 warning 处理
+    function handle.warning(ws, size)
+        LOG.warn("WebSocket buffer warning: fd=%d, size=%d", ws.id, size)
+    end
+
+    -- 可选: 添加 handshake 处理
+    function handle.handshake(ws, header, url)
+        LOG.info("WebSocket handshake: fd=%d, url=%s", ws.id, url)
+    end
+
     -- 启动WebSocket监听
     local ws_listen_fd = socket.listen("0.0.0.0", websocket_port)
     LOG.info("Gate service(WebSocket) listening on port %d", websocket_port)
     
     socket.start(ws_listen_fd, function(fd, addr)
-        local ok, err = websocket.accept(fd, nil, handle)
+        -- 正确使用 websocket.accept
+        local ok, err = websocket.accept(
+            fd,                -- socket id
+            handle,           -- 处理函数表
+            "ws",            -- 协议类型 ("ws" 或 "wss")
+            addr             -- 客户端地址
+        )
+        
         if not ok then
-            LOG.error("WebSocket accept failed: %s", err)
+            LOG.error("WebSocket accept failed: fd=%d, err=%s", fd, err)
             socket.close(fd)
         end
     end)
@@ -278,7 +295,7 @@ skynet.start(function()
         local conn = connections[fd]
         if conn and conn.ws then
             -- 使用 WebSocket 发送
-            conn.ws:send_binary(msg)
+            websocket.write(fd, msg, "binary")  -- 使用 websocket.write 替代直接调用 ws:send_binary
         else
             -- 使用普通 Socket 发送
             _socket_write(fd, msg)
