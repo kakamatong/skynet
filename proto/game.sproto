@@ -1,7 +1,9 @@
 .package {
-    type 0 : integer
-    type 1 : string
-    type 2 : boolean
+    integer 0 : integer
+    string 1 : string
+    boolean 2 : boolean
+    double 3 : double    # 添加新类型
+    binary 4 : binary    # 添加新类型
 }
 
 # 登录请求
