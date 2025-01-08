@@ -3,11 +3,9 @@ require "skynet.manager"
 local socket = require "skynet.socket"
 local sproto = require "sproto"
 local netpack = require "skynet.netpack"
-local crypt = require "skynet.crypt"
 local aes = require "aes"
 local websocket = require "http.websocket"
-local httpd = require "http.httpd"
-local sockethelper = require "http.sockethelper"
+
 
 --local WATCHDOG -- watchdog 服务
 local PROTO -- 协议对象
@@ -42,6 +40,7 @@ end
 local function forward_message(fd, msg, sz)
     local message = netpack.tostring(msg, sz)
     
+    LOG.info("forward_message: %s %d", message, sz)
     -- 解密消息
     message = decrypt_message(message)
     
