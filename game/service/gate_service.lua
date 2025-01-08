@@ -3,7 +3,6 @@ require "skynet.manager"
 local socket = require "skynet.socket"
 local sproto = require "sproto"
 local netpack = require "skynet.netpack"
-local aes = require "aes"
 local websocket = require "http.websocket"
 
 
@@ -13,19 +12,6 @@ local connections = {} -- 连接管理 {fd = {fd=,addr=,agent=,client=,status=}}
 
 local CMD = {}
 local handler = {}
-
--- 加密密钥
-local SECRET_KEY = "your_secret_key"
-
--- 解密消息
-local function decrypt_message(msg)
-    return aes.decrypt(msg, SECRET_KEY)
-end
-
--- 加密消息
-local function encrypt_message(msg)
-    return aes.encrypt(msg, SECRET_KEY)
-end
 
 -- 初始化协议
 local function init_proto()
@@ -41,8 +27,6 @@ local function forward_message(fd, msg, sz)
     local message = netpack.tostring(msg, sz)
     
     LOG.info("forward_message: %s %d", message, sz)
-    -- 解密消息
-    message = decrypt_message(message)
     
     local proto_id, proto_msg = string.unpack(">I2", message)
     
@@ -73,9 +57,8 @@ local function forward_message(fd, msg, sz)
             fd, proto_name, proto_content)
         
         if ok and result then
-            -- 加密响应
+            -- 直接发送响应，不再加密
             local response = PROTO:encode_message(proto_name .. "_response", result)
-            response = encrypt_message(response)
             socket.write(fd, response)
         end
     end
@@ -253,6 +236,7 @@ skynet.start(function()
     
     function handle.message(id, message, op)
         -- 将 WebSocket 消息转换为统一格式
+        LOG.info("handle.message: %s", message)
         local msg = string.pack(">s2", message)
         local sz = #msg
         handler.message(id, msg, sz)
