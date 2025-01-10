@@ -1,9 +1,6 @@
 .package {
-    integer 0 : integer
-    string 1 : string
-    boolean 2 : boolean
-    double 3 : double    # 添加新类型
-    binary 4 : binary    # 添加新类型
+    type 0 : integer
+	session 1 : integer
 }
 
 # 登录请求
