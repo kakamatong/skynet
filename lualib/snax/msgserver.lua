@@ -82,20 +82,23 @@ skynet.register_protocol {
 	id = skynet.PTYPE_CLIENT,
 }
 
-local user_online = {}
-local handshake = {}
-local connection = {}
+local user_online = {} -- 在线用户表
+local handshake = {} -- 握手信息表
+local connection = {} -- 连接信息表
 
+-- 解析用户名，返回uid, subid, server
 function server.userid(username)
 	-- base64(uid)@base64(server)#base64(subid)
 	local uid, servername, subid = username:match "([^@]*)@([^#]*)#(.*)"
 	return b64decode(uid), b64decode(subid), b64decode(servername)
 end
 
+-- 生成用户名
 function server.username(uid, subid, servername)
 	return string.format("%s@%s#%s", b64encode(uid), b64encode(servername), b64encode(tostring(subid)))
 end
 
+-- 用户登出
 function server.logout(username)
 	local u = user_online[username]
 	user_online[username] = nil
@@ -107,6 +110,7 @@ function server.logout(username)
 	end
 end
 
+-- 用户登录
 function server.login(username, secret)
 	assert(user_online[username] == nil)
 	user_online[username] = {
@@ -114,10 +118,11 @@ function server.login(username, secret)
 		version = 0,
 		index = 0,
 		username = username,
-		response = {},	-- response cache
+		response = {},	-- 响应缓存
 	}
 end
 
+-- 获取用户IP
 function server.ip(username)
 	local u = user_online[username]
 	if u and u.fd then
@@ -125,6 +130,7 @@ function server.ip(username)
 	end
 end
 
+-- 启动服务器
 function server.start(conf)
 	local expired_number = conf.expired_number or 128
 
@@ -136,21 +142,25 @@ function server.start(conf)
 		kick = assert(conf.kick_handler),
 	}
 
+	-- 处理命令
 	function handler.command(cmd, source, ...)
 		local f = assert(CMD[cmd])
 		return f(...)
 	end
 
+	-- 处理网关打开
 	function handler.open(source, gateconf)
 		local servername = assert(gateconf.servername)
 		return conf.register_handler(servername)
 	end
 
+	-- 处理新连接
 	function handler.connect(fd, addr)
 		handshake[fd] = addr
 		gateserver.openclient(fd)
 	end
 
+	-- 处理断开连接
 	function handler.disconnect(fd)
 		handshake[fd] = nil
 		local c = connection[fd]
@@ -169,7 +179,7 @@ function server.start(conf)
 
 	handler.error = handler.disconnect
 
-	-- atomic , no yield
+	-- 认证处理
 	local function do_auth(fd, message, addr)
 		local username, index, hmac = string.match(message, "([^:]*):([^:]*):([^:]*)")
 		local u = user_online[username]
@@ -195,6 +205,7 @@ function server.start(conf)
 		connection[fd] = u
 	end
 
+	-- 处理认证
 	local function auth(fd, addr, msg, sz)
 		local message = netpack.tostring(msg, sz)
 		local ok, result = pcall(do_auth, fd, message, addr)
@@ -218,7 +229,7 @@ function server.start(conf)
 
 	local request_handler = assert(conf.request_handler)
 
-	-- u.response is a struct { return_fd , response, version, index }
+	-- 处理过期响应
 	local function retire_response(u)
 		if u.index >= expired_number * 2 then
 			local max = 0
@@ -240,6 +251,7 @@ function server.start(conf)
 		end
 	end
 
+	-- 处理请求
 	local function do_request(fd, message)
 		local u = assert(connection[fd], "invalid fd")
 		local session = string.unpack(">I4", message, -4)
@@ -296,6 +308,7 @@ function server.start(conf)
 		retire_response(u)
 	end
 
+	-- 处理请求
 	local function request(fd, msg, sz)
 		local message = netpack.tostring(msg, sz)
 		local ok, err = pcall(do_request, fd, message)
@@ -308,6 +321,7 @@ function server.start(conf)
 		end
 	end
 
+	-- 处理消息
 	function handler.message(fd, msg, sz)
 		local addr = handshake[fd]
 		if addr then
