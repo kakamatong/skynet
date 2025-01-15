@@ -4,7 +4,7 @@ local sprotoloader = require "sprotoloader"
 local max_client = 64
 
 skynet.start(function()
-	skynet.error("Server start")
+	LOG.info("Server start")
 	skynet.uniqueservice("protoloader")
 	if not skynet.getenv "daemon" then
 		local console = skynet.newservice("console")
@@ -17,6 +17,6 @@ skynet.start(function()
 		maxclient = max_client,
 		nodelay = true,
 	})
-	skynet.error("Watchdog listen on " .. addr .. ":" .. port)
+	LOG.info("Watchdog listen on " .. addr .. ":" .. port)
 	skynet.exit()
 end)
