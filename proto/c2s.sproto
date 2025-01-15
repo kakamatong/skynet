@@ -1,9 +1,10 @@
+# 登录服务协议(0-9999)
 .package {
     type 0 : integer
-	session 1 : integer
+    session 1 : integer
 }
 
-# 登录请求
+# 客户端请求结构
 auth 1 {
     request {
         username 0 : string
@@ -19,11 +20,11 @@ auth 1 {
     }
 }
 
-# 心跳包
 heartbeat 2 {
     request {
         uid 0 : integer
         timestamp 1 : integer
+        token 2 : string
     }
     response {
         code 0 : integer
@@ -31,10 +32,10 @@ heartbeat 2 {
     }
 }
 
-# 登出请求
 logout 3 {
     request {
         uid 0 : integer
+        token 1 : string
     }
     response {
         code 0 : integer

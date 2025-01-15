@@ -1,0 +1,15 @@
+.package {
+    type 0 : integer
+    session 1 : integer
+}
+
+reportMsg 1 {
+    request {
+        msg 0 : string
+        time 1 : integer
+
+    }
+    response {
+        code 0 : integer
+    }
+}
