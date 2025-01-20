@@ -1,6 +1,6 @@
 local skynet = require "skynet"
 local wsgateserver = require "wsgateserver"
-
+local websocket = require "http.websocket"
 local watchdog
 local connection = {}	-- fd -> connection : { fd , client, agent , ip, mode }
 
@@ -32,11 +32,24 @@ function handler.message(fd, msg, sz)
 	end
 end
 
-function handler.connect(fd, addr)
+function handler.connect(fd)
 	LOG.info("wsgate connect")
+end
+
+function handler.handshake(fd, header, url)
+	local addr = websocket.addrinfo(fd)
+	LOG.info("wsgate handshake from: %s, url %s, addr %s" ,tostring(fd), url, addr)
+	LOG.info("----header-----")
+	for k,v in pairs(header) do
+		LOG.info(k,v)
+	end
+	LOG.info("--------------")
+
 	local c = {
 		fd = fd,
 		ip = addr,
+		url = url,
+		header = header,
 	}
 	connection[fd] = c
 	skynet.send(watchdog, "lua", "socket", "open", fd, addr)
