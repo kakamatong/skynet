@@ -8,6 +8,7 @@ function loader.register(filename, index)
 	local f = assert(io.open(filename), "Can't open sproto file")
 	local data = f:read "a"
 	f:close()
+	--LOG.info("sprotoloader register %s", data)
 	local sp = core.newproto(parser.parse(data))
 	core.saveproto(sp, index)
 end

@@ -1,6 +1,7 @@
 local skynet = require "skynet"
 local wsgateserver = require "wsgateserver"
 local websocket = require "http.websocket"
+local sprotoloader = require "sprotoloader"
 local watchdog
 local connection = {}	-- fd -> connection : { fd , client, agent , ip, mode }
 
@@ -17,18 +18,18 @@ function handler.open(source, conf)
 	return conf.address, conf.port
 end
 
-function handler.message(fd, msg, sz)
+function handler.message(fd, msg, msgType)
 	LOG.info("wsgate message")
 	-- recv a package, forward it
 	local c = connection[fd]
 	local agent = c.agent
 	if agent then
 		-- It's safe to redirect msg directly , gateserver framework will not free msg.
-		skynet.redirect(agent, c.client, "client", fd, msg, sz)
+		skynet.redirect(agent, c.client, "client", fd, msg, string.len(msg))
 	else
-		skynet.send(watchdog, "lua", "socket", "data", fd, skynet.tostring(msg, sz))
+		skynet.send(watchdog, "lua", "socket", "data", fd, msg)
 		-- skynet.tostring will copy msg to a string, so we must free msg here.
-		skynet.trash(msg,sz)
+		skynet.trash(msg,string.len(msg))
 	end
 end
 
@@ -90,6 +91,10 @@ function CMD.forward(source, fd, client, address)
 	c.client = client or 0
 	c.agent = address or source
 	wsgateserver.openclient(fd)
+end
+
+function CMD.send(source, fd, msg)
+	websocket.write(fd, msg, "binary")
 end
 
 function CMD.accept(source, fd)

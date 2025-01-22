@@ -43,7 +43,7 @@ function wsgateserver.start(handler)
 
 		local protocol = "ws"
         local id = socket.listen(address, port)
-        LOG.error(string.format("Listen websocket addr %s port %d protocol:%s", address, port, protocol))
+        LOG.info(string.format("Listen websocket addr %s port %d protocol:%s", address, port, protocol))
         socket.start(id, function(id, addr)
             LOG.info(string.format("accept client wssocket_id: %s addr:%s", id, addr))
             local ok, err = websocket.accept(id, handler, protocol, addr)

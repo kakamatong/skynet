@@ -1,9 +1,10 @@
 local skynet = require "skynet"
-local socket = require "skynet.socket"
+local websocket = require "http.websocket"
 local sproto = require "sproto"
 local sprotoloader = require "sprotoloader"
 
 local WATCHDOG
+local gate
 local host
 local send_request
 
@@ -30,7 +31,18 @@ function REQUEST:quit()
 	skynet.call(WATCHDOG, "lua", "close", client_fd)
 end
 
+function REQUEST:auth(data)
+	LOG.info("auth %s", data.username)
+	LOG.info("auth %s", data.password)
+	LOG.info("auth %s", data.device)
+	LOG.info("auth %s", data.version)
+	return {code = 0, uid = 1, token = "123456", msg = "success"}
+end
+
 local function request(name, args, response)
+	LOG.info("request %s", name)
+	LOG.info("args %s", args.username)
+	LOG.info("response %s", response)
 	local f = assert(REQUEST[name])
 	local r = f(args)
 	if response then
@@ -39,17 +51,23 @@ local function request(name, args, response)
 end
 
 local function send_package(pack)
-	local package = string.pack(">s2", pack)
-	socket.write(client_fd, package)
+	--local package = string.pack(">s2", pack)
+	-- LOG.info("send_package %d", client_fd)
+	-- websocket.write(client_fd, pack, "binary")
+	skynet.call(gate, "lua", "send", client_fd, pack)
+
 end
 
 skynet.register_protocol {
 	name = "client",
 	id = skynet.PTYPE_CLIENT,
 	unpack = function (msg, sz)
-		return host:dispatch(msg, sz)
+		LOG.info("agent unpack msg %s, sz %d", type(msg), sz)
+		local str = skynet.tostring(msg, sz)
+		return host:dispatch(str, sz)
 	end,
 	dispatch = function (fd, _, type, ...)
+		LOG.info("agent dispatch fd %d, type %s", fd, type)
 		assert(fd == client_fd)	-- You can use fd to reply message
 		skynet.ignoreret()	-- session is fd, don't call skynet.ret
 		skynet.trace()
@@ -60,7 +78,7 @@ skynet.register_protocol {
 					send_package(result)
 				end
 			else
-				skynet.error(result)
+				LOG.error(result)
 			end
 		else
 			assert(type == "RESPONSE")
@@ -71,19 +89,21 @@ skynet.register_protocol {
 
 function CMD.start(conf)
 	local fd = conf.client
-	local gate = conf.gate
+	gate = conf.gate
 	WATCHDOG = conf.watchdog
+	client_fd = fd
 	-- slot 1,2 set at main.lua
 	host = sprotoloader.load(1):host "package"
-	send_request = host:attach(sprotoloader.load(2))
-	skynet.fork(function()
-		while true do
-			send_package(send_request "heartbeat")
-			skynet.sleep(500)
-		end
-	end)
+	--send_request = host:attach(sprotoloader.load(1))
+	--send_package(send_request("auth", {username = "admin", password = "123456", device = "pc", version = "0.0.1"}))
+	-- skynet.fork(function()
+	-- 	while true do
+	-- 		send_package(send_request "heartbeat")
+	-- 		skynet.sleep(500)
+	-- 	end
+	-- end)
 
-	client_fd = fd
+	
 	skynet.call(gate, "lua", "forward", fd)
 end
 
