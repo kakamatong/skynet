@@ -92,14 +92,10 @@ function CMD.start(conf)
 	client_fd = fd
 	-- slot 1,2 set at main.lua
 	host = sprotoloader.load(1):host "package"
-	--send_request = host:attach(sprotoloader.load(1))
-	--send_package(send_request("auth", {username = "admin", password = "123456", device = "pc", version = "0.0.1"}))
-	-- skynet.fork(function()
-	-- 	while true do
-	-- 		send_package(send_request "heartbeat")
-	-- 		skynet.sleep(500)
-	-- 	end
-	-- end)
+
+	-- 测试 服务的主动推送协议
+	send_request = host:attach(sprotoloader.load(2))
+	send_package(send_request("reportMsg",{msg = "test", time = os.time()}, 1))
 
 	
 	skynet.call(gate, "lua", "forward", fd)
