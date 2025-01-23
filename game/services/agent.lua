@@ -31,18 +31,16 @@ function REQUEST:quit()
 	skynet.call(WATCHDOG, "lua", "close", client_fd)
 end
 
-function REQUEST:auth(data)
-	LOG.info("auth %s", data.username)
-	LOG.info("auth %s", data.password)
-	LOG.info("auth %s", data.device)
-	LOG.info("auth %s", data.version)
+function REQUEST:auth()
+	LOG.info("auth %s", self.username)
+	LOG.info("auth %s", self.password)
+	LOG.info("auth %s", self.device)
+	LOG.info("auth %s", self.version)
 	return {code = 0, uid = 1, token = "123456", msg = "success"}
 end
 
 local function request(name, args, response)
 	LOG.info("request %s", name)
-	LOG.info("args %s", args.username)
-	LOG.info("response %s", response)
 	local f = assert(REQUEST[name])
 	local r = f(args)
 	if response then
