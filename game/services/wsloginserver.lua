@@ -1,5 +1,6 @@
 local skynet = require "skynet"
 local websocket = require "http.websocket"
+local socket = require "skynet.socket"
 local crypt = require "skynet.crypt"
 local login = require "snax.loginserver"
 
@@ -64,12 +65,13 @@ local function ws_auth(fd)
 
     -- 解密Token
     local etoken = websocket.read(fd)
-    return crypt.desdecode(secret, crypt.base64decode(etoken))
+    local token = crypt.desdecode(secret, crypt.base64decode(etoken))
+    return token, secret
 end
 
 -- WebSocket连接处理器
 local function handle_ws_connection(fd, addr)
-    local ok, token = pcall(ws_auth, fd)
+    local ok, token, secret = pcall(ws_auth, fd)
     if not ok then
         websocket.write(fd, "401 Unauthorized", "text")
         websocket.close(fd)
