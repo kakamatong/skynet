@@ -2,7 +2,6 @@ local skynet = require "skynet"
 local websocket = require "http.websocket"
 local socket = require "skynet.socket"
 local crypt = require "skynet.crypt"
-local login = require "snax.loginserver"
 
 local server = {
     host = "0.0.0.0",
@@ -109,9 +108,6 @@ function server.command_handler(cmd, ...)
     local f = assert(CMD[cmd])
     return f(...)
 end
-
--- 启动服务
-login(server)
 
 -- 添加WebSocket监听
 skynet.start(function()
