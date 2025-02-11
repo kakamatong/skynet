@@ -11,18 +11,23 @@ skynet.start(function()
 	end
 	skynet.newservice("debug_console",8000)
 	--skynet.newservice("simpledb")
+	-- 登入服务器
+	skynet.newservice("logind")
+
+	-- 网关服务器
 	local watchdog = skynet.newservice("watchdog")
 	local addr,port = skynet.call(watchdog, "lua", "start", {
-		port = 8888,
+		port = 9001,
 		maxclient = max_client,
 		nodelay = true,
 	})
 	LOG.info("Watchdog listen on " .. addr .. ":" .. port)
 
+	-- websocket网关服务器
 	local wswatchdog = skynet.newservice("wswatchdog")
 	local addr,port = skynet.call(wswatchdog, "lua", "start", {
 		address = "0.0.0.0",
-		port = 8001,
+		port = 9002,
 		maxclient = max_client,
 	})
 	LOG.info("Wswatchdog listen on " .. addr .. ":" .. port)

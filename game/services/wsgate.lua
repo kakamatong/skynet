@@ -1,7 +1,6 @@
 local skynet = require "skynet"
 local wsgateserver = require "wsgateserver"
 local websocket = require "http.websocket"
-local sprotoloader = require "sprotoloader"
 local watchdog
 local connection = {}	-- fd -> connection : { fd , client, agent , ip, mode }
 
@@ -40,11 +39,6 @@ end
 function handler.handshake(fd, header, url)
 	local addr = websocket.addrinfo(fd)
 	LOG.info("wsgate handshake from: %s, url %s, addr %s" ,tostring(fd), url, addr)
-	LOG.info("----header-----")
-	for k,v in pairs(header) do
-		LOG.info(k,v)
-	end
-	LOG.info("--------------")
 
 	local c = {
 		fd = fd,

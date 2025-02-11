@@ -32,10 +32,6 @@ function REQUEST:quit()
 end
 
 function REQUEST:auth()
-	LOG.info("auth %s", self.username)
-	LOG.info("auth %s", self.password)
-	LOG.info("auth %s", self.device)
-	LOG.info("auth %s", self.version)
 	return {code = 0, uid = 1, token = "123456", msg = "success"}
 end
 
@@ -49,9 +45,6 @@ local function request(name, args, response)
 end
 
 local function send_package(pack)
-	--local package = string.pack(">s2", pack)
-	-- LOG.info("send_package %d", client_fd)
-	-- websocket.write(client_fd, pack, "binary")
 	skynet.call(gate, "lua", "send", client_fd, pack)
 
 end
