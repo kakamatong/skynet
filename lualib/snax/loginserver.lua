@@ -76,7 +76,7 @@ local function launch_slave(auth_handler)
 
 		local token = crypt.desdecode(secret, crypt.base64decode(etoken))
 
-		local ok, server, uid =  pcall(auth_handler,token)
+		local ok, server, uid =  pcall(auth_handler,token) -- 去验证账号
 
 		return ok, server, uid, secret
 	end

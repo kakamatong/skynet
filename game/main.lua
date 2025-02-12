@@ -11,8 +11,9 @@ skynet.start(function()
 	end
 	skynet.newservice("debug_console",8000)
 	--skynet.newservice("simpledb")
-	skynet.newservice("logind")
 	-- 替换为WebSocket登录服务
+	skynet.newservice("wslogind")
+	
 
 	-- 网关服务器
 	local watchdog = skynet.newservice("watchdog")
