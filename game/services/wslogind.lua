@@ -3,7 +3,7 @@ local crypt = require "skynet.crypt"
 local skynet = require "skynet"
 
 local server = {
-	host = "127.0.0.1",
+	host = "0.0.0.0",
 	port = 8002,
 	multilogin = false,	-- disallow multilogin
 	name = "ws_login_master",

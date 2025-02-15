@@ -7,29 +7,37 @@ require "skynet.manager"
 local function ws_auth(fd)
     -- 生成挑战
     local challenge = crypt.randomkey()
-    websocket.write(fd, crypt.base64encode(challenge), "binary")
+    local challenge_b64 = crypt.base64encode(challenge)
+    LOG.info("login challenge_b64 %s", challenge_b64)
+    websocket.write(fd, challenge_b64, "binary")
 
     -- 读取客户端密钥
     local client_key = websocket.read(fd)
+    LOG.info("login client_key_b64 %s", client_key)
+    
     client_key = crypt.base64decode(client_key)
     if #client_key ~= 8 then
+        LOG.info("Invalid client key length")
         error("Invalid client key length")
     end
-
     -- 生成服务端密钥
     local server_key = crypt.randomkey()
-    websocket.write(fd, crypt.base64encode(crypt.dhexchange(server_key)), "binary")
+    local server_key_dh = crypt.dhexchange(server_key)
+    local server_key_b64 = crypt.base64encode(server_key_dh)
+    LOG.info("login server_key_b64 %s", server_key_b64)
+    websocket.write(fd, server_key_b64, "binary")
 
     -- 计算共享密钥
     local secret = crypt.dhsecret(client_key, server_key)
-
     -- 验证HMAC
     local response = websocket.read(fd)
     local hmac = crypt.hmac64(challenge, secret)
-    if hmac ~= crypt.base64decode(response) then
+    local client_hmac = crypt.base64decode(response)
+    if hmac ~= client_hmac then
         error("HMAC validation failed")
     end
-
+    
+    LOG.info("auth handshake success secret %s", crypt.hexencode(secret))
     -- 解密Token
     local etoken = websocket.read(fd)
     local token = crypt.desdecode(secret, crypt.base64decode(etoken))
@@ -75,15 +83,18 @@ local function login(conf)
     skynet.start(function()
         -- 添加WebSocket监听
         local id = socket.listen(conf.host, conf.port)
-        skynet.error(string.format("WebSocket login server listening on %s:%d", conf.host, conf.port))
+        LOG.info(string.format("WebSocket login server listening on %s:%d", conf.host, conf.port))
         
         socket.start(id, function(fd, addr)
+            LOG.info("login websocket add %s", addr)
             local ok, err = websocket.accept(fd, {
-                handshake = function(_, header, url)
+                handshake = function(fd, header, url)
+                    LOG.info("login handshake %s",url)
+                    pcall(handle_ws_connection, fd, addr, conf)
                     return true  -- 接受所有连接
                 end,
-                connected = function(fd)
-                    pcall(handle_ws_connection, fd, addr, conf)
+                connect = function(fd)
+                    LOG.info("login connect %d",fd)
                 end,
                 closed = function(fd)
                     websocket.close(fd)
@@ -91,7 +102,7 @@ local function login(conf)
             })
             
             if not ok then
-                skynet.error("WebSocket connection failed: "..tostring(err))
+                LOG.error("WebSocket connection failed: "..tostring(err))
             end
         end)
 
