@@ -55,7 +55,7 @@ end
 local function handle_ws_connection(fd, addr, conf)
     local ok, token, secret = pcall(ws_auth, fd)
     if not ok then
-        websocket.write(fd, "401 Unauthorized", "text")
+        websocket.write(fd, "401 Unauthorized", "binary")
         websocket.close(fd)
         return
     end
@@ -63,7 +63,7 @@ local function handle_ws_connection(fd, addr, conf)
     -- 调用认证逻辑
     local ok, srv, uid = pcall(conf.auth_handler, token)
     if not ok then
-        websocket.write(fd, "403 Forbidden", "text")
+        websocket.write(fd, "403 Forbidden", "binary")
         websocket.close(fd)
         return
     end
@@ -71,13 +71,15 @@ local function handle_ws_connection(fd, addr, conf)
     -- 调用登录逻辑
     local ok, subid = pcall(conf.login_handler, srv, uid, secret)
     if not ok then
-        websocket.write(fd, "406 Not Acceptable", "text")
+        websocket.write(fd, "406 Not Acceptable", "binary")
         websocket.close(fd)
         return
     end
-
+    --local subid = "1234567890"
+    LOG.info("login subid %s", subid)
     -- 返回成功
-    websocket.write(fd, "200 "..crypt.base64encode(subid), "text")
+    websocket.write(fd, "200 "..crypt.base64encode(subid), "binary")
+    websocket.close(fd)
 end
 
 local function login(conf)
