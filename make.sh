@@ -1,0 +1,2 @@
+export PLAT=linux
+make

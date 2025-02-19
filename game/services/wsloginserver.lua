@@ -29,6 +29,11 @@ local function ws_auth(fd)
 
     -- 计算共享密钥
     local secret = crypt.dhsecret(client_key, server_key)
+    -- secret = string.char(0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08)
+    -- local tmpToken = "dGVzdFVzZXI=@Z2FtZVNlcnZlcg==:cGFzc3dvcmQ="
+    -- local tmpToken2 = crypt.desencode(secret, tmpToken)
+    -- LOG.info("auth tmpToken2 %s", crypt.base64encode(tmpToken2))
+    
     -- 验证HMAC
     local response = websocket.read(fd)
     local hmac = crypt.hmac64(challenge, secret)
@@ -40,7 +45,9 @@ local function ws_auth(fd)
     LOG.info("auth handshake success secret %s", crypt.hexencode(secret))
     -- 解密Token
     local etoken = websocket.read(fd)
+    LOG.info("auth etoken %s", etoken)
     local token = crypt.desdecode(secret, crypt.base64decode(etoken))
+    LOG.info("auth token %s", token)
     return token, secret
 end
 

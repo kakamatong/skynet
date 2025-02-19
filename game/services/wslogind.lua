@@ -19,6 +19,7 @@ function server.auth_handler(token)
 	user = crypt.base64decode(user)
 	server = crypt.base64decode(server)
 	password = crypt.base64decode(password)
+	LOG.info("auth_handler user %s, server %s, password %s", user, server, password)
 	assert(password == "password", "Invalid password")
 	return server, user
 end
