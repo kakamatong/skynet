@@ -4,6 +4,42 @@
 -- The license is under the BSD license.
 -- Modified by Cloud Wu (remove bit32 for lua 5.3)
 
+--[[
+使用说明:
+1. 创建连接:
+local mysql = require "skynet.db.mysql"
+local db = mysql.connect({
+    host = "127.0.0.1",
+    port = 3306,
+    database = "test", 
+    user = "root",
+    password = "123456",
+    charset = "utf8mb4",
+    max_packet_size = 1024 * 1024, -- 可选,默认1MB
+    on_connect = function() end -- 可选,连接建立时回调
+})
+
+2. 执行查询:
+local res = db:query("SELECT * FROM users WHERE id = 1")
+-- res 结构: 
+-- 成功: 返回结果集数组
+-- 失败: res.badresult = true, res.err = 错误信息
+
+3. 预处理语句:
+-- 准备语句
+local stmt = db:prepare("SELECT * FROM users WHERE id = ?")
+-- 执行语句
+local res = db:execute(stmt, 1)
+
+4. 关闭连接:
+db:disconnect()
+
+5. 其他功能:
+- db:ping() 心跳检测
+- db:quote_sql_str(str) SQL转义
+- db:server_ver() 获取服务器版本
+]]
+
 -- protocol detail: https://mariadb.com/kb/en/clientserver-protocol/
 
 local socketchannel = require "skynet.socketchannel"

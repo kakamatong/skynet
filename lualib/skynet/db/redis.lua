@@ -1,3 +1,52 @@
+--[[
+使用说明:
+1. 普通模式连接:
+local redis = require "skynet.db.redis"
+local db = redis.connect({
+    host = "127.0.0.1",
+    port = 6379,
+    auth = "password", -- 可选,密码验证
+    db = 0,  -- 可选,选择数据库
+    username = "user" -- 可选,用户名(Redis 6.0+支持)
+})
+
+2. 执行命令:
+-- 支持所有Redis命令,命令名自动转大写
+local res = db:set("key", "value")
+local val = db:get("key")
+local ok = db:del("key1", "key2")
+
+3. Pipeline模式:
+-- 批量执行命令
+local cmds = {
+    {"set", "key1", "value1"},
+    {"set", "key2", "value2"},
+    {"mget", "key1", "key2"}
+}
+local res = db:pipeline(cmds)
+
+4. 订阅模式:
+-- 创建订阅连接
+local w = redis.watch({
+    host = "127.0.0.1",
+    port = 6379
+})
+-- 订阅频道
+w:subscribe("channel1", "channel2") 
+-- 模式订阅
+w:psubscribe("pattern*")
+-- 接收消息
+while true do
+    local msg, channel = w:message()
+    -- 处理消息
+end
+
+5. 断开连接:
+db:disconnect() -- 普通模式
+w:disconnect()  -- 订阅模式
+]]
+
+
 local socketchannel = require "skynet.socketchannel"
 
 local tostring = tostring
