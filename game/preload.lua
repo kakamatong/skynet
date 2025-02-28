@@ -149,4 +149,4 @@ _G.ERROR = {
 }
 
 -- 在这里可以添加更多的全局初始化内容
-LOG.info("Preload completed") 
+--LOG.info("Preload completed") 

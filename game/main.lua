@@ -4,15 +4,15 @@ local sprotoloader = require "sprotoloader"
 local max_client = 64
 
 skynet.start(function()
-	LOG.info("Server start")
+	--LOG.info("Server start")
 	skynet.uniqueservice("protoloader")
 	if not skynet.getenv "daemon" then
 		local console = skynet.newservice("console")
 	end
 	skynet.newservice("debug_console",8000)
 
-	local db = skynet.newservice("db")
-	skynet.call(db, "lua", "cmd", "start")
+	local dbserver = skynet.newservice("dbserver")
+	skynet.call(dbserver, "lua", "cmd", "start")
 	--skynet.newservice("simpledb")
 	-- 替换为WebSocket登录服务
 	skynet.newservice("wslogind")
