@@ -7,9 +7,9 @@
 3rd/lua/all
 /cservice
 /luaclib
-*.so
+*.so    
 *.dSYM
 .DS_Store
 .vscode
 game.pid
-game/config/config.lua
+game/config/gameConfig.lua

@@ -2,7 +2,7 @@
 local skynet = require "skynet"
 
 -- 全局配置
-local config = require "config.config" or {}
+local config = require "gameConfig" or {}
 _G.CONFIG = config
 
 -- 全局常量定义
