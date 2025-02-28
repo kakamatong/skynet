@@ -10,10 +10,12 @@ skynet.start(function()
 		local console = skynet.newservice("console")
 	end
 	skynet.newservice("debug_console",8000)
+
+	local db = skynet.newservice("db")
+	skynet.call(db, "lua", "cmd", "start")
 	--skynet.newservice("simpledb")
 	-- 替换为WebSocket登录服务
 	skynet.newservice("wslogind")
-	
 
 	-- 网关服务器
 	local watchdog = skynet.newservice("watchdog")

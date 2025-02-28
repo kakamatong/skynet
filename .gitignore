@@ -12,4 +12,4 @@
 .DS_Store
 .vscode
 game.pid
-/config/game.config
+game/config/config.lua
