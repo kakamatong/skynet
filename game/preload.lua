@@ -73,6 +73,31 @@ _G.UTILS = {
         table.insert(result, string.sub(str, from))
         return result
     end,
+
+    -- 序列化table 成string
+    tableToString=function(tbl, indent)
+        if not indent then indent = 0 end
+        local str = ""
+        local indentStr = string.rep("  ", indent)
+        
+        if type(tbl) ~= "table" then
+            return tostring(tbl)
+        end
+        
+        str = str .. "{\n"
+        for k, v in pairs(tbl) do
+            str = str .. indentStr .. "  [" .. tostring(k) .. "] = "
+            if type(v) == "table" then
+                str = str .. UTILS.tableToString(v, indent + 1)
+            else
+                str = str .. tostring(v)
+            end
+            str = str .. ",\n"
+        end
+        str = str .. indentStr .. "}"
+        
+        return str
+    end,
 }
 
 -- 日志工具

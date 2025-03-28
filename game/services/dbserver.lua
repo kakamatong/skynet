@@ -4,7 +4,7 @@ local redis = require "skynet.db.redis"
 require "skynet.manager"
 local CMD = {}
 local FUNC = require "db" or {}
-
+local name = "dbserver"
 local mysql_db = nil
 local redis_db = nil
 
@@ -57,7 +57,7 @@ end
 
 skynet.start(function()
     skynet.dispatch("lua", function(session, source, cmd, subcmd, ...)
-
+        LOG.info("%s cmd %s %s",name, cmd, subcmd)
         if cmd == "func" then
             if not mysql_db or not redis_db then
                 LOG.error("mysql or redis not started")
@@ -73,5 +73,5 @@ skynet.start(function()
         end
     end)
 
-    skynet.register(".dbserver")
+    skynet.register("." .. name)
 end)

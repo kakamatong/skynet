@@ -15,7 +15,7 @@ skynet.start(function()
 	skynet.call(dbserver, "lua", "cmd", "start")
 	--skynet.newservice("simpledb")
 	-- 替换为WebSocket登录服务
-	skynet.newservice("wslogind")
+	local loginservice = skynet.newservice("wslogind")
 
 	-- 网关服务器
 	local watchdog = skynet.newservice("watchdog")
@@ -32,6 +32,9 @@ skynet.start(function()
 		address = "0.0.0.0",
 		port = 9002,
 		maxclient = max_client,
+		-- onOpen = function(source) -- 向登入认证服务注册网关
+		-- 	skynet.call(loginservice, "lua", "register_gate", "lobbyGate", source)
+		-- end,
 	})
 	LOG.info("Wswatchdog listen on " .. addr .. ":" .. port)
 	skynet.exit()

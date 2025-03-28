@@ -9,11 +9,22 @@ skynet.register_protocol {
 	id = skynet.PTYPE_CLIENT,
 }
 
+local function register_handler(name)
+	LOG.info("wsgate register_handler")
+	local loginservice = skynet.localname(".ws_login_master")
+	if loginservice then
+		skynet.call(loginservice, "lua", "register_gate", name, skynet.self())
+	else
+		LOG.error("wsgate register_handler error")
+	end
+end
+
 local handler = {}
 
 function handler.open(source, conf)
 	LOG.info("wsgate open")
 	watchdog = conf.watchdog or source
+	register_handler("lobbyGate") -- 注册到login服务
 	return conf.address, conf.port
 end
 
@@ -99,6 +110,18 @@ end
 
 function CMD.kick(source, fd)
 	wsgateserver.closeclient(fd)
+end
+
+function CMD.login(source, numid, secret,loginType)
+	-- todo: 将uid和secret写入数据库
+	local dbserver = skynet.localname(".dbserver")
+	if not dbserver then
+		LOG.error("wsgate login error: dbserver not started")
+		return
+	end
+	local subid = skynet.call(dbserver, "lua", "func", "setAuth", numid, secret, 0, loginType)
+
+	return subid or -1
 end
 
 function handler.command(cmd, source, ...)

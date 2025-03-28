@@ -91,7 +91,7 @@ function CMD.start(conf)
 	send_package(send_request("reportMsg",{msg = "test", time = os.time()}, 1))
 
 	
-	skynet.call(gate, "lua", "forward", fd)
+	skynet.call(gate, "lua", "forward", fd, fd, skynet.self())
 end
 
 function CMD.disconnect()

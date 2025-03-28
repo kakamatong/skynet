@@ -15,12 +15,21 @@ local user_login = {}
 
 function server.auth_handler(token)
 	-- the token is base64(user)@base64(server):base64(password)
-	local user, server, password = token:match("([^@]+)@([^:]+):(.+)")
+	local user, server, password, loginType = token:match("([^@]+)@([^:]+):([^#]+)#(.+)")
 	user = crypt.base64decode(user)
 	server = crypt.base64decode(server)
 	password = crypt.base64decode(password)
-	assert(password == "password", "Invalid password")
-	return server, user
+	loginType = crypt.base64decode(loginType)
+	LOG.info(string.format("user %s login, server is %s, password is %s, loginType is %s", user, server, password, loginType))
+	local dbserver = skynet.localname(".dbserver")
+	if not dbserver then
+		LOG.error("wsgate login error: dbserver not started")
+		return
+	end
+	local userInfo = skynet.call(dbserver, "lua", "func", "login", user,password,loginType)
+
+	assert(userInfo, "account or password error")
+	return server, userInfo.numid
 end
 
 function server.login_handler(server, uid, secret)
