@@ -40,13 +40,13 @@ function server.login_handler(server, numid, secret, loginType)
 	if last then
 		skynet.call(last.address, "lua", "kick", numid, last.subid)
 	end
-	if user_online[numid] then
-		error(string.format("user %d is already online", numid))
-	end
+	-- if user_online[numid] then
+	-- 	error(string.format("user %d is already online", numid))
+	-- end
 
 	local subid = tostring(skynet.call(gameserver, "lua", "login", numid, crypt.hexencode(secret), loginType))
 	LOG.info(string.format("%d@%s login success, subid is %s", numid, server, subid))
-	user_online[numid] = { address = gameserver, subid = subid , server = server}
+	user_online[numid] = { address = gameserver, subid = subid , secret = crypt.hexencode(secret)}
 	return subid
 end
 

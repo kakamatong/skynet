@@ -11,12 +11,12 @@ auth 1 {
         password 1 : string
         device 2 : string
         version 3 : string
+        channel 4 : integer
     }
     response {
         code 0 : integer
         uid 1 : integer
-        token 2 : string
-        msg 3 : string
+        msg 2 : string
     }
 }
 

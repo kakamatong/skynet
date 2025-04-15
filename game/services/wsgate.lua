@@ -2,7 +2,8 @@ local skynet = require "skynet"
 local wsgateserver = require "wsgateserver"
 local websocket = require "http.websocket"
 local watchdog
-local connection = {}	-- fd -> connection : { fd , client, agent , ip, mode }
+local connection = {}	-- fd -> connection : { fd , client, agent , ip, mode } 链接池
+local logins = {}	-- uid -> login : { uid, login } 登入池子
 
 skynet.register_protocol {
 	name = "client",
@@ -109,6 +110,9 @@ function CMD.accept(source, fd)
 end
 
 function CMD.kick(source, fd)
+	LOG.info("wsgate kick")
+	local c = assert(connection[fd])
+	unforward(c)
 	wsgateserver.closeclient(fd)
 end
 
