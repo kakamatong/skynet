@@ -17,7 +17,7 @@ local dTime = 10
 local function close()
 	LOG.info("agent close")
 	skynet.call(gate, "lua", "kick", client_fd)
-	skynet.exit()
+	--skynet.exit()
 end
 
 function REQUEST:get()
@@ -39,7 +39,8 @@ function REQUEST:quit()
 	skynet.call(WATCHDOG, "lua", "close", client_fd)
 end
 
-function REQUEST:auth()
+function REQUEST:auth(username, password, token)
+	LOG.info("auth username %s, password %s, token %s", username, password, token)
 	return {code = 0, uid = 1, msg = "success"}
 end
 
@@ -69,7 +70,8 @@ skynet.register_protocol {
 		LOG.info("agent dispatch fd %d, type %s", fd, type)
 		assert(fd == client_fd)	-- You can use fd to reply message
 		skynet.ignoreret()	-- session is fd, don't call skynet.ret
-		skynet.trace()
+		--skynet.trace()
+		LOG.info("agent dispatcha ", ...)
 		if type == "REQUEST" then
 			local ok, result  = pcall(request, ...)
 			if ok then
@@ -86,6 +88,12 @@ skynet.register_protocol {
 	end
 }
 
+function CMD.content()
+	LOG.info("agent content")
+	send_request = host:attach(sprotoloader.load(2))
+	send_package(send_request("reportContent",{code = 1}, 1))
+end
+
 function CMD.start(conf)
 	local fd = conf.client
 	gate = conf.gate
@@ -94,10 +102,7 @@ function CMD.start(conf)
 	-- slot 1,2 set at main.lua
 	host = sprotoloader.load(1):host "package"
 	leftTime = os.time()
-	-- 测试 服务的主动推送协议
-	-- send_request = host:attach(sprotoloader.load(2))
-	-- send_package(send_request("reportMsg",{msg = "test", time = os.time()}, 1))
-
+	
 	skynet.fork(function()
 		while true do
 			-- 测试 服务的主动推送协议
@@ -123,7 +128,7 @@ end
 
 skynet.start(function()
 	skynet.dispatch("lua", function(_,_, command, ...)
-		skynet.trace()
+		--skynet.trace()
 		local f = CMD[command]
 		skynet.ret(skynet.pack(f(...)))
 	end)

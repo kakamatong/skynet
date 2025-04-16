@@ -38,7 +38,7 @@ function server.login_handler(server, numid, secret, loginType)
 	-- only one can login, because disallow multilogin
 	local last = user_online[numid]
 	if last then
-		skynet.call(last.address, "lua", "kick", numid, last.subid)
+		skynet.call(last.address, "lua", "kickByNumid", numid, last.subid)
 	end
 	-- if user_online[numid] then
 	-- 	error(string.format("user %d is already online", numid))

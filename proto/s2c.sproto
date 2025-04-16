@@ -13,3 +13,9 @@ reportMsg 1 {
         code 0 : integer
     }
 }
+
+reportContent 2 {
+    request {
+        code 0 : integer
+    }
+}

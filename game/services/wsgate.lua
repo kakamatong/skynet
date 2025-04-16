@@ -35,9 +35,11 @@ function handler.message(fd, msg, msgType)
 	local c = connection[fd]
 	local agent = c.agent
 	if agent then
+		LOG.info("wsgate message forward")
 		-- It's safe to redirect msg directly , gateserver framework will not free msg.
 		skynet.redirect(agent, c.client, "client", fd, msg, string.len(msg))
 	else
+		LOG.info("wsgate message send")
 		skynet.send(watchdog, "lua", "socket", "data", fd, msg)
 		-- skynet.tostring will copy msg to a string, so we must free msg here.
 		skynet.trash(msg,string.len(msg))
@@ -60,6 +62,7 @@ function handler.handshake(fd, header, url)
 	}
 	connection[fd] = c
 	skynet.send(watchdog, "lua", "socket", "open", fd, addr)
+	wsgateserver.openclient(fd)
 end
 
 local function unforward(c)
@@ -92,11 +95,12 @@ end
 local CMD = {}
 
 function CMD.forward(source, fd, client, address)
+	LOG.info("wsgate forward")
 	local c = assert(connection[fd])
 	unforward(c)
 	c.client = client or 0
 	c.agent = address or source
-	wsgateserver.openclient(fd)
+	skynet.call(c.agent, "lua", "content")
 end
 
 function CMD.send(source, fd, msg)
@@ -111,9 +115,21 @@ end
 
 function CMD.kick(source, fd)
 	LOG.info("wsgate kick")
-	local c = assert(connection[fd])
-	unforward(c)
 	wsgateserver.closeclient(fd)
+end
+
+function CMD.kickByNumid(source, numid, subid)
+	for key, value in pairs(connection) do
+		if value.numid == numid then
+			wsgateserver.closeclient(key)
+			break
+		end
+	end
+end
+
+function CMD.authSuccess(source,numid, fd)
+	local c = assert(connection[fd])
+	c.numid = numid
 end
 
 function CMD.login(source, numid, secret,loginType)

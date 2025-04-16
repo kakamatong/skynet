@@ -17,9 +17,11 @@ local connection = {} -- 连接状态表
 
 -- 打开客户端连接
 function wsgateserver.openclient(fd)
-	if connection[fd] then
-		--socketdriver.start(fd)
-	end
+	-- if  then
+	-- 	--socketdriver.start(fd)
+	-- end
+
+	connection[fd] = {}
 end
 
 -- 关闭客户端连接
