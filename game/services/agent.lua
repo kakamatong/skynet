@@ -39,15 +39,15 @@ function REQUEST:quit()
 	skynet.call(WATCHDOG, "lua", "close", client_fd)
 end
 
-function REQUEST:auth(username, password, token)
-	LOG.info("auth username %s, password %s, token %s", username, password, token)
+function REQUEST:auth(args)
+	LOG.info("auth username %s, password %s", args.username, args.password)
 	return {code = 0, uid = 1, msg = "success"}
 end
 
 local function request(name, args, response)
 	LOG.info("request %s", name)
 	local f = assert(REQUEST[name])
-	local r = f(args)
+	local r = f(REQUEST, args)
 	if response then
 		return response(r)
 	end
@@ -71,7 +71,6 @@ skynet.register_protocol {
 		assert(fd == client_fd)	-- You can use fd to reply message
 		skynet.ignoreret()	-- session is fd, don't call skynet.ret
 		--skynet.trace()
-		LOG.info("agent dispatcha ", ...)
 		if type == "REQUEST" then
 			local ok, result  = pcall(request, ...)
 			if ok then
