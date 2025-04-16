@@ -52,6 +52,21 @@ function db.getAuth(mysql,redis,...)
     return res[1]
 end
 
+function db.checkAuth(mysql,redis,...)
+    local numid, secret =...
+    local sql = string.format("SELECT * FROM auth WHERE numid = %d AND secret = '%s';",numid,secret)
+    local res, err = mysql:query(sql)
+    LOG.info(UTILS.tableToString(res))
+    if not res then
+        LOG.error("select auth error: %s", err)
+        return false
+    end
+    if #res == 0 then
+        return nil
+    end
+    return res[1]
+end
+
 function db.login(mysql,redis,...)
     local uid,password,loginType = ...
     local sql = string.format("SELECT * FROM %s WHERE userid = '%s' AND password = UPPER(MD5('%s'));",loginType,uid,password)

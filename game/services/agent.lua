@@ -12,12 +12,23 @@ local CMD = {}
 local REQUEST = {}
 local client_fd
 local leftTime = 0
-local dTime = 10
+local dTime = 15
+local bAuth = false
 
 local function close()
 	LOG.info("agent close")
 	skynet.call(gate, "lua", "kick", client_fd)
 	--skynet.exit()
+end
+
+local function getDB()
+	local dbserver = skynet.localname(".dbserver")
+	if not dbserver then
+		LOG.error("wsgate login error: dbserver not started")
+		return
+	end
+
+	return dbserver
 end
 
 function REQUEST:get()
@@ -31,8 +42,9 @@ function REQUEST:set()
 	local r = skynet.call("SIMPLEDB", "lua", "set", self.what, self.value)
 end
 
-function REQUEST:handshake()
-	return { msg = "Welcome to skynet, I will send heartbeat every 5 sec." }
+function REQUEST:heartbeat()
+	leftTime = os.time()
+	return { timestamp = leftTime }
 end
 
 function REQUEST:quit()
@@ -40,12 +52,22 @@ function REQUEST:quit()
 end
 
 function REQUEST:auth(args)
-	LOG.info("auth username %s, password %s", args.username, args.password)
-	return {code = 0, uid = 1, msg = "success"}
+	LOG.info("auth username %s, password %s", args.userid, args.password)
+	local db =getDB()
+	local authInfo = skynet.call(db, "lua", "func", "checkAuth", args.userid, args.password)
+	if not authInfo then
+		return {code = 0, msg = "auth failed"}
+	end
+	bAuth = true
+	leftTime = os.time()
+	return {code = 1, msg = "success"}
 end
 
 local function request(name, args, response)
 	LOG.info("request %s", name)
+	if not bAuth and name ~= "auth" then
+		return 
+	end
 	local f = assert(REQUEST[name])
 	local r = f(REQUEST, args)
 	if response then
@@ -108,7 +130,7 @@ function CMD.start(conf)
 			-- send_package(send_request("reportMsg",{msg = "test", time = os.time()}, 1))
 			local now = os.time()
 			if now - leftTime >= dTime then
-				LOG.info("agent heartbeat fd %d", client_fd)
+				LOG.info("agent heartbeat fd %d now %d leftTime %d", client_fd, now, leftTime)
 				close()
 				break
 			end

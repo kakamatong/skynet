@@ -78,7 +78,7 @@ local function handle_ws_connection(fd, addr, conf)
     --local subid = "1234567890"
     LOG.info("login subid %s", subid)
     -- 返回成功
-    websocket.write(fd, "200 "..crypt.base64encode(subid), "binary")
+    websocket.write(fd, "200 "..crypt.base64encode(subid) .. " " .. crypt.base64encode(uid), "binary")
     websocket.close(fd)
 end
 

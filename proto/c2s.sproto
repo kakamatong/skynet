@@ -8,27 +8,24 @@
 auth 1 {
     request {
         username 0 : string
-        password 1 : string
-        device 2 : string
-        version 3 : string
-        channel 4 : integer
+        userid 1 : integer
+        password 2 : string
+        device 3 : string
+        version 4 : string
+        channel 5 : integer
     }
     response {
         code 0 : integer
-        uid 1 : integer
-        msg 2 : string
+        msg 1 : string
     }
 }
 
 heartbeat 2 {
     request {
-        uid 0 : integer
-        timestamp 1 : integer
-        token 2 : string
+        timestamp 0 : integer
     }
     response {
-        code 0 : integer
-        timestamp 1 : integer
+        timestamp 0 : integer
     }
 }
 

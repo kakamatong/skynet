@@ -72,9 +72,23 @@ local function unforward(c)
 	end
 end
 
+local function clearLogin(c)
+	if c.numid then
+		logins[c.numid] = nil
+	end
+end
+
+local function kickByNumid(numid)
+	local c = logins[numid]
+	if c then
+		wsgateserver.closeclient(c.fd)
+	end
+end
+
 local function close_fd(fd)
 	local c = connection[fd]
 	if c then
+		clearLogin(c)
 		unforward(c)
 		connection[fd] = nil
 	end
@@ -118,15 +132,6 @@ function CMD.kick(source, fd)
 	wsgateserver.closeclient(fd)
 end
 
-function CMD.kickByNumid(source, numid, subid)
-	for key, value in pairs(connection) do
-		if value.numid == numid then
-			wsgateserver.closeclient(key)
-			break
-		end
-	end
-end
-
 function CMD.authSuccess(source,numid, fd)
 	local c = assert(connection[fd])
 	c.numid = numid
@@ -139,6 +144,9 @@ function CMD.login(source, numid, secret,loginType)
 		LOG.error("wsgate login error: dbserver not started")
 		return
 	end
+	-- 踢掉之前的链接
+	kickByNumid(numid)
+	
 	local subid = skynet.call(dbserver, "lua", "func", "setAuth", numid, secret, 0, loginType)
 
 	return subid or -1

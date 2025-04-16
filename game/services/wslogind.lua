@@ -36,17 +36,17 @@ function server.login_handler(server, numid, secret, loginType)
 	LOG.info(string.format("%d@%s is login, secret is %s", numid, server, crypt.hexencode(secret)))
 	local gameserver = assert(server_list[server], "Unknown server")
 	-- only one can login, because disallow multilogin
-	local last = user_online[numid]
-	if last then
-		skynet.call(last.address, "lua", "kickByNumid", numid, last.subid)
-	end
+	-- local last = user_online[numid]
+	-- if last then
+	-- 	skynet.call(last.address, "lua", "kickByNumid", numid, last.subid)
+	-- end
 	-- if user_online[numid] then
 	-- 	error(string.format("user %d is already online", numid))
 	-- end
 
 	local subid = tostring(skynet.call(gameserver, "lua", "login", numid, crypt.hexencode(secret), loginType))
-	LOG.info(string.format("%d@%s login success, subid is %s", numid, server, subid))
-	user_online[numid] = { address = gameserver, subid = subid , secret = crypt.hexencode(secret)}
+	-- LOG.info(string.format("%d@%s login success, subid is %s", numid, server, subid))
+	-- user_online[numid] = { address = gameserver, subid = subid , secret = crypt.hexencode(secret)}
 	return subid
 end
 
@@ -57,13 +57,13 @@ function CMD.register_gate(server, address)
 	server_list[server] = address
 end
 
-function CMD.logout(uid, subid)
-	local u = user_online[uid]
-	if u then
-		print(string.format("%s@%s is logout", uid, u.server))
-		user_online[uid] = nil
-	end
-end
+-- function CMD.logout(uid, subid)
+-- 	local u = user_online[uid]
+-- 	if u then
+-- 		print(string.format("%s@%s is logout", uid, u.server))
+-- 		user_online[uid] = nil
+-- 	end
+-- end
 
 function server.command_handler(command, ...)
 	local f = assert(CMD[command])
