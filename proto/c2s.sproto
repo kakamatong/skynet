@@ -13,6 +13,7 @@ auth 1 {
         device 3 : string
         version 4 : string
         channel 5 : integer
+        subid 6 : integer
     }
     response {
         code 0 : integer
@@ -39,3 +40,27 @@ logout 3 {
         msg 1 : string
     }
 } 
+
+userData 4 {
+    request {
+        uid 0 : integer
+    }
+    response {
+        nickname 0 : string
+        headurl 1 : string
+        sex 2 : integer
+        province 3 : string
+        city 4 : string
+        ip 5 : string
+    }
+}
+
+userRiches 5 {
+    request {
+        
+    }
+    response {
+        m0 0 : integer
+        m1 1 : integer
+    }
+}

@@ -73,13 +73,13 @@ local function unforward(c)
 end
 
 local function clearLogin(c)
-	if c.numid then
-		logins[c.numid] = nil
+	if c.userid then
+		logins[c.userid] = nil
 	end
 end
 
-local function kickByNumid(numid)
-	local c = logins[numid]
+local function kickByUserid(userid)
+	local c = logins[userid]
 	if c then
 		wsgateserver.closeclient(c.fd)
 	end
@@ -132,12 +132,12 @@ function CMD.kick(source, fd)
 	wsgateserver.closeclient(fd)
 end
 
-function CMD.authSuccess(source,numid, fd)
+function CMD.authSuccess(source,userid, fd)
 	local c = assert(connection[fd])
-	c.numid = numid
+	c.userid = userid
 end
 
-function CMD.login(source, numid, secret,loginType)
+function CMD.login(source, userid, secret,loginType)
 	-- todo: 将uid和secret写入数据库
 	local dbserver = skynet.localname(".dbserver")
 	if not dbserver then
@@ -145,9 +145,9 @@ function CMD.login(source, numid, secret,loginType)
 		return
 	end
 	-- 踢掉之前的链接
-	kickByNumid(numid)
+	kickByUserid(userid)
 	
-	local subid = skynet.call(dbserver, "lua", "func", "setAuth", numid, secret, 0, loginType)
+	local subid = skynet.call(dbserver, "lua", "func", "setAuth", userid, secret, 0, loginType)
 
 	return subid or -1
 end

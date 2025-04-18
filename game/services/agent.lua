@@ -54,13 +54,22 @@ end
 function REQUEST:auth(args)
 	LOG.info("auth username %s, password %s", args.userid, args.password)
 	local db =getDB()
-	local authInfo = skynet.call(db, "lua", "func", "checkAuth", args.userid, args.password)
+	local authInfo = skynet.call(db, "lua", "func", "getAuth", args.userid)
 	if not authInfo then
-		return {code = 0, msg = "auth failed"}
+		return {code = 1, msg = "acc failed"}
 	end
+
+	if authInfo.secret ~= args.password then
+		return {code = 2, msg = "pass failed"}
+	end
+
+	if authInfo.subid ~= args.subid then
+		return {code = 3, msg = "subid failed"}
+	end
+
 	bAuth = true
 	leftTime = os.time()
-	return {code = 1, msg = "success"}
+	return {code = 0, msg = "success"}
 end
 
 local function request(name, args, response)
