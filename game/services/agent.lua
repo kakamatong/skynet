@@ -14,6 +14,7 @@ local client_fd
 local leftTime = 0
 local dTime = 15
 local bAuth = false
+local userid = 0
 
 local function close()
 	LOG.info("agent close")
@@ -51,6 +52,14 @@ function REQUEST:quit()
 	skynet.call(WATCHDOG, "lua", "close", client_fd)
 end
 
+function REQUEST:userData(args)
+	local db =getDB()
+	local userData = skynet.call(db, "lua", "func", "getUserData", args.uid)
+	assert(userData)
+
+	return userData
+end
+
 function REQUEST:auth(args)
 	LOG.info("auth username %s, password %s", args.userid, args.password)
 	local db =getDB()
@@ -69,6 +78,7 @@ function REQUEST:auth(args)
 	skynet.call(db, "lua", "func", "addSubid", args.userid, authInfo.subid + 1)
 
 	bAuth = true
+	userid = args.userid
 	leftTime = os.time()
 	return {code = 0, msg = "success"}
 end
