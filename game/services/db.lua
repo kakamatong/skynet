@@ -79,6 +79,18 @@ function db.checkAuth(mysql,redis,...)
     return res[1]
 end
 
+function db.addSubid(mysql,redis,...)
+    local userid, newSubid = ...
+    local sql = string.format("UPDATE auth SET subid = %d WHERE userid = %d;",newSubid,userid)
+    local res, err = mysql:query(sql)
+    LOG.info(UTILS.tableToString(res))
+    if not res then
+        LOG.error("update auth error: %s", err)
+        return false
+    end
+    return true
+end
+
 function db.login(mysql,redis,...)
     local username,password,loginType = ...
     local sql = string.format("SELECT * FROM %s WHERE username = '%s' AND password = UPPER(MD5('%s'));",loginType,username,password)

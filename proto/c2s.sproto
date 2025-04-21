@@ -52,6 +52,7 @@ userData 4 {
         province 3 : string
         city 4 : string
         ip 5 : string
+        ext 6 : string
     }
 }
 

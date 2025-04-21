@@ -66,6 +66,7 @@ function REQUEST:auth(args)
 	if authInfo.subid ~= args.subid then
 		return {code = 3, msg = "subid failed"}
 	end
+	skynet.call(db, "lua", "func", "addSubid", args.userid, authInfo.subid + 1)
 
 	bAuth = true
 	leftTime = os.time()
