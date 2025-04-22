@@ -12,6 +12,9 @@ local server = {
 local server_list = {}
 local user_online = {}
 local user_login = {}
+local login_type = {
+	account = true,
+}
 
 function server.auth_handler(token)
 	-- the token is base64(user)@base64(server):base64(password)
@@ -20,6 +23,7 @@ function server.auth_handler(token)
 	server = crypt.base64decode(server)
 	password = crypt.base64decode(password)
 	loginType = crypt.base64decode(loginType)
+	assert(login_type[loginType])
 	LOG.info(string.format("user %s login, server is %s, password is %s, loginType is %s", user, server, password, loginType))
 	local dbserver = skynet.localname(".dbserver")
 	if not dbserver then
