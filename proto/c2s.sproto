@@ -61,7 +61,7 @@ userRiches 5 {
         
     }
     response {
-        m0 0 : integer
-        m1 1 : integer
+        richType 0 : *integer
+        richNums 1 : *integer
     }
 }

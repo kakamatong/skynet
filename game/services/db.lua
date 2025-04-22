@@ -121,4 +121,19 @@ function db.getUserData(mysql,redis,...)
     return res[1]
 end
 
+function db.getUserRiches(mysql,redis,...)
+    local userid =...
+    local sql = string.format("SELECT * FROM userRiches WHERE userid = %d;",userid)
+    local res, err = mysql:query(sql)
+    LOG.info(UTILS.tableToString(res))
+    if not res then
+        LOG.error("select auth error: %s", err)
+        return false
+    end
+    if #res == 0 then
+        return nil
+    end
+    return res
+end
+
 return db

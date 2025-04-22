@@ -54,10 +54,26 @@ end
 
 function REQUEST:userData(args)
 	local db =getDB()
-	local userData = skynet.call(db, "lua", "func", "getUserData", args.uid)
+	local userData = skynet.call(db, "lua", "func", "getUserData", userid)
 	assert(userData)
-
 	return userData
+end
+
+function REQUEST:userRiches(args)
+	local db =getDB()
+	local userRiches = skynet.call(db, "lua", "func", "getUserRiches", userid)
+	assert(userRiches)
+	local richType = {}
+	local richNums = {}
+	for k,v in pairs(userRiches) do
+		table.insert(richType, v.richType)
+		table.insert(richNums, v.richNums)
+	end
+
+	LOG.info("richType %s", UTILS.tableToString(richType))
+	LOG.info("richNums %s", UTILS.tableToString(richNums))
+
+	return {richType = richType, richNums = richNums}
 end
 
 function REQUEST:auth(args)
