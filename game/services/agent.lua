@@ -32,6 +32,18 @@ local function getDB()
 	return dbserver
 end
 
+local function checkStatus()
+	local db = getDB()
+	local status = skynet.call(db, "lua", "func", "getUserStatus", userid)
+	if not status or status.gameid == 0 then
+		skynet.call(db, "lua", "func", "setUserStatus", userid, CONFIG.USER_STATUS.ONLINE, 0)
+		return
+	elseif status.gameid > 0 then
+		skynet.call(db, "lua", "func", "setUserStatus", userid, CONFIG.USER_STATUS.GAMEING, 0)
+		return
+	end
+end
+
 function REQUEST:get()
 	print("get", self.what)
 	local r = skynet.call("SIMPLEDB", "lua", "get", self.what)
@@ -96,6 +108,7 @@ function REQUEST:auth(args)
 	bAuth = true
 	userid = args.userid
 	leftTime = os.time()
+	checkStatus()
 	return {code = 0, msg = "success"}
 end
 

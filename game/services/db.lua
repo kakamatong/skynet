@@ -138,11 +138,11 @@ end
 
 function db.setUserStatus(mysql,redis,...)
     local userid,status,gameid =...
-    local sql = string.format("INSERT INTO userStatus (userid, status, gameid) VALUES (%d, %d, %d) ON DUPLICATE KEY UPDATE status = %d,gameid=%d, updated_at = CURRENT_TIMESTAMP;",userid,status,gameid,status,gameid)
+    local sql = string.format("INSERT INTO userStatus (userid, status, gameid) VALUES (%d, %d, %d) ON DUPLICATE KEY UPDATE status = %d,gameid=%d;",userid,status,gameid,status,gameid)
     local res, err = mysql:query(sql)
     LOG.info(UTILS.tableToString(res))
-    if not res then
-        LOG.error("update auth error: %s", err)
+    if not res or res.badresult then
+        LOG.error("setUserStatus error: %s", res.err)
         return false
     end
     return true
@@ -152,6 +152,7 @@ function db.getUserStatus(mysql,redis,...)
     local userid =...
     local sql = string.format("SELECT * FROM userStatus WHERE userid = %d;",userid)
     local res, err = mysql:query(sql)
+    LOG.info('----------------getUserStatus: %s',sql)
     LOG.info(UTILS.tableToString(res))
     if not res then
         LOG.error("select auth error: %s", err)
