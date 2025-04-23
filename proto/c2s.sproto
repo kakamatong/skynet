@@ -65,3 +65,13 @@ userRiches 5 {
         richNums 1 : *integer
     }
 }
+
+userStatus 6 {
+    request {
+        userid 0 : integer
+    }
+    response {
+        status 0 : integer
+        gameid 1 : integer
+    }
+}
