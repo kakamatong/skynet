@@ -136,4 +136,31 @@ function db.getUserRiches(mysql,redis,...)
     return res
 end
 
+function db.setUserStatus(mysql,redis,...)
+    local userid,status,gameid =...
+    local sql = string.format("INSERT INTO userStatus (userid, status, gameid) VALUES (%d, %d, %d) ON DUPLICATE KEY UPDATE status = %d,gameid=%d, updated_at = CURRENT_TIMESTAMP;",userid,status,gameid,status,gameid)
+    local res, err = mysql:query(sql)
+    LOG.info(UTILS.tableToString(res))
+    if not res then
+        LOG.error("update auth error: %s", err)
+        return false
+    end
+    return true
+end
+
+function db.getUserStatus(mysql,redis,...)
+    local userid =...
+    local sql = string.format("SELECT * FROM userStatus WHERE userid = %d;",userid)
+    local res, err = mysql:query(sql)
+    LOG.info(UTILS.tableToString(res))
+    if not res then
+        LOG.error("select auth error: %s", err)
+        return false
+    end
+    if #res == 0 then
+        return nil
+    end
+    return res[1]
+end
+
 return db
