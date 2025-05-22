@@ -1,5 +1,5 @@
 local skynet = require "skynet"
-
+require "skynet.manager"
 local CMD = {}
 local name = "match"
 local users = {}
@@ -13,34 +13,6 @@ local function reportToAgent(userid,gamedata)
     local agent = user.agent
 
     skynet.call(agent, "lua", "enterGame", userid2,gamedata)
-end
-
--- 匹配成功
-local function matchSuccess(userid1, userid2)
-    -- 1.创建游戏
-    -- 2.删除queue里的用户
-    -- 3.通知agent
-    
-    reportToAgent(userid1, {})
-    reportToAgent(userid2, {})
-end
-
--- 检查队列
-local function checkQueue(queueid)
-    local que = queueUserids[queueid]
-    -- 循环前一个跟后一个比较rate，差值小于0.05，匹配成功
-    for i = 1, #que do
-        if i < #que - 1 then
-            local userid1 = que[i]
-            local userid2 = que[i+1]
-            local user1 = users[userid1]
-            local user2 = users[userid2]
-            if math.abs(user1.rate - user2.rate) < 0.05 then
-                LOG.info("match success %d %d", userid1, userid2)
-                matchSuccess(userid1, userid2)
-            end
-        end
-    end
 end
 
 -- 离开队列
@@ -64,6 +36,38 @@ local function leaveQueue(userid)
     return true
 end
 
+-- 匹配成功
+local function matchSuccess(userid1, userid2)
+    -- 1.创建游戏
+    -- 2.删除queue里的用户
+    -- 3.通知agent
+    
+    leaveQueue(userid1)
+    leaveQueue(userid2)
+
+    reportToAgent(userid1, {})
+    reportToAgent(userid2, {})
+end
+
+-- 检查队列
+local function checkQueue(queueid)
+    LOG.info("checkQueue %d", queueid)
+    local que = queueUserids[queueid]
+    -- 循环前一个跟后一个比较rate，差值小于0.05，匹配成功
+    for i = 1, #que do
+        if i < #que - 1 then
+            local userid1 = que[i]
+            local userid2 = que[i+1]
+            local user1 = users[userid1]
+            local user2 = users[userid2]
+            if math.abs(user1.rate - user2.rate) < 0.05 then
+                LOG.info("match success %d %d", userid1, userid2)
+                matchSuccess(userid1, userid2)
+            end
+        end
+    end
+end
+
 -- 开始匹配
 function CMD.start()
     LOG.info("match start")
@@ -71,7 +75,7 @@ function CMD.start()
     skynet.fork(function()
 		while true do
 			for i = 1, queueNum do
-				if #queueUserids[i] >= 2 then
+				if queueUserids[i] and #queueUserids[i] >= 2 then
 					checkQueue(i)
 				end
 			end

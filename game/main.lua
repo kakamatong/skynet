@@ -11,6 +11,9 @@ skynet.start(function()
 	end
 	skynet.newservice("debug_console",8000)
 
+	local match = skynet.newservice("match")
+	skynet.call(match, "lua", "start")
+
 	local dbserver = skynet.newservice("dbserver")
 	skynet.call(dbserver, "lua", "cmd", "start")
 	--skynet.newservice("simpledb")
