@@ -15,6 +15,7 @@ local leftTime = 0
 local dTime = 15
 local bAuth = false
 local userid = 0
+local userStatus = 0
 
 local function close()
 	LOG.info("agent close")
@@ -32,14 +33,23 @@ local function getDB()
 	return dbserver
 end
 
+-- 设置用户状态
+local function setUserStatus(status, gameid)
+	if not status then return end
+	userStatus = status
+	local db = getDB()
+	skynet.call(db, "lua", "func", "setUserStatus", userid, status, gameid)
+end
+
+-- 检查用户状态
 local function checkStatus()
 	local db = getDB()
 	local status = skynet.call(db, "lua", "func", "getUserStatus", userid)
 	if not status or status.gameid == 0 then
-		skynet.call(db, "lua", "func", "setUserStatus", userid, CONFIG.USER_STATUS.ONLINE, 0)
+		setUserStatus(CONFIG.USER_STATUS.ONLINE, 0)
 		return
 	elseif status.gameid > 0 then
-		skynet.call(db, "lua", "func", "setUserStatus", userid, CONFIG.USER_STATUS.GAMEING, 0)
+		setUserStatus(CONFIG.USER_STATUS.GAMEING, status.gameid)
 		return
 	end
 end
@@ -193,6 +203,8 @@ end
 
 function CMD.disconnect()
 	-- todo: do something before exit
+	setUserStatus(CONFIG.USER_STATUS.OFFLINE)
+	LOG.info("agent disconnect")
 	skynet.exit()
 end
 

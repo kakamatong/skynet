@@ -138,7 +138,10 @@ end
 
 function db.setUserStatus(mysql,redis,...)
     local userid,status,gameid =...
-    local sql = string.format("INSERT INTO userStatus (userid, status, gameid) VALUES (%d, %d, %d) ON DUPLICATE KEY UPDATE status = %d,gameid=%d;",userid,status,gameid,status,gameid)
+    local sql = string.format("INSERT INTO userStatus (userid, status, gameid) VALUES (%d, %d, %d) ON DUPLICATE KEY UPDATE status = %d;",userid,status,0,status)
+    if gameid then
+        sql = string.format("INSERT INTO userStatus (userid, status, gameid) VALUES (%d, %d, %d) ON DUPLICATE KEY UPDATE status = %d,gameid=%d;",userid,status,gameid,status,gameid)
+    end
     local res, err = mysql:query(sql)
     LOG.info(UTILS.tableToString(res))
     if not res or res.badresult then
