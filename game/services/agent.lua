@@ -16,6 +16,17 @@ local dTime = 15
 local bAuth = false
 local userid = 0
 local userStatus = 0
+local reportsessionid = 0
+
+local function send_package(pack)
+	skynet.call(gate, "lua", "send", client_fd, pack)
+end
+
+local function report(name, data)
+	reportsessionid = reportsessionid + 1
+	send_request = host:attach(sprotoloader.load(2))
+	send_package(send_request(name,data, reportsessionid))
+end
 
 local function close()
 	LOG.info("agent close")
@@ -65,6 +76,7 @@ function REQUEST:set()
 	local r = skynet.call("SIMPLEDB", "lua", "set", self.what, self.value)
 end
 
+-- 心跳
 function REQUEST:heartbeat()
 	leftTime = os.time()
 	return { timestamp = leftTime }
@@ -74,6 +86,7 @@ function REQUEST:quit()
 	skynet.call(WATCHDOG, "lua", "close", client_fd)
 end
 
+-- 用户数据
 function REQUEST:userData(args)
 	local db =getDB()
 	local userData = skynet.call(db, "lua", "func", "getUserData", userid)
@@ -81,6 +94,7 @@ function REQUEST:userData(args)
 	return userData
 end
 
+-- 用户财富
 function REQUEST:userRiches(args)
 	local db =getDB()
 	local userRiches = skynet.call(db, "lua", "func", "getUserRiches", userid)
@@ -98,6 +112,35 @@ function REQUEST:userRiches(args)
 	return {richType = richType, richNums = richNums}
 end
 
+-- 用户状态
+function REQUEST:userStatus(args)
+	local db = getDB()
+	local status = skynet.call(db, "lua", "func", "getUserStatus", userid)
+	if not status then
+		return {gameid = 0 , status = -1}
+	else
+		return {gameid = status.gameid , status=status.status}
+	end
+end
+
+-- 匹配
+function REQUEST:match(args)
+	local matchServer = skynet.localname(".match")
+	if not matchServer then
+		return {code = 1, msg ="匹配服务异常"}
+	else
+		local b = skynet.call(matchServer, "lua", "enterQueue", skynet.self(), userid, 0)
+		if b then
+			setUserStatus(CONFIG.USER_STATUS.MATCHING)
+			report("reportUserStatus", {status = CONFIG.USER_STATUS.MATCHING, gameid = 0})
+			return {code = 0, msg ="进入匹配列队成功"}
+		else
+			return {code = 2, msg ="进入匹配列队失败"}
+		end
+	end
+end
+
+-- 认证
 function REQUEST:auth(args)
 	LOG.info("auth username %s, password %s", args.userid, args.password)
 	local db =getDB()
@@ -122,6 +165,7 @@ function REQUEST:auth(args)
 	return {code = 0, msg = "success"}
 end
 
+-- 请求分发
 local function request(name, args, response)
 	LOG.info("request %s", name)
 	if not bAuth and name ~= "auth" then
@@ -132,11 +176,6 @@ local function request(name, args, response)
 	if response then
 		return response(r)
 	end
-end
-
-local function send_package(pack)
-	skynet.call(gate, "lua", "send", client_fd, pack)
-
 end
 
 skynet.register_protocol {
@@ -170,8 +209,7 @@ skynet.register_protocol {
 
 function CMD.content()
 	LOG.info("agent content")
-	send_request = host:attach(sprotoloader.load(2))
-	send_package(send_request("reportContent",{code = 1}, 1))
+	report("reportContent",{code = 1})
 end
 
 function CMD.start(conf)

@@ -109,12 +109,13 @@ function CMD.enterQueue(agent, userid, queueid, rate)
     --根据rate的大小插入队列
     local index = 1
     for i, v in ipairs(queueUserids[queueid]) do
-        if rate > users[v].rate then
+        if rate > users[i].rate then
             index = i
             break
         end
     end
     table.insert(queueUserids[queueid], index, userid)
+    return true
 end
 
 -- 离开队列

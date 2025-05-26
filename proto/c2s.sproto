@@ -21,6 +21,7 @@ auth 1 {
     }
 }
 
+# 心跳
 heartbeat 2 {
     request {
         timestamp 0 : integer
@@ -41,6 +42,7 @@ logout 3 {
     }
 } 
 
+# 用户数据
 userData 4 {
     request {
         uid 0 : integer
@@ -56,6 +58,7 @@ userData 4 {
     }
 }
 
+# 用户财富
 userRiches 5 {
     request {
         
@@ -66,12 +69,25 @@ userRiches 5 {
     }
 }
 
+# 用户状态
 userStatus 6 {
     request {
-        userid 0 : integer
+        uid 0 : integer
     }
     response {
         status 0 : integer
         gameid 1 : integer
+    }
+}
+
+# 匹配
+match 7 {
+    request {
+        gameid 0 : integer
+        gameSubid 1 : integer
+    }
+    response {
+        code 0 : integer
+        msg 1 : string
     }
 }
