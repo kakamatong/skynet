@@ -99,6 +99,7 @@ function CMD.enterQueue(agent, userid, queueid, rate)
             queueid = queueid or 0,
             rate = rate or 0,
             agent = agent,
+            time = os.time(),
         }
     end
     if not queueUserids[queueid] then
