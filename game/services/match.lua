@@ -92,7 +92,7 @@ end
 
 -- 进入队列
 function CMD.enterQueue(agent, userid, queueid, rate)
-    LOG.info("enterQueue %d", userid)
+    LOG.info("enterQueue %d %d", userid, queueid)
     if not users[userid] then
         users[userid] = {
             userid = userid,
@@ -101,26 +101,30 @@ function CMD.enterQueue(agent, userid, queueid, rate)
             agent = agent,
             time = os.time(),
         }
+    else
+        return false
     end
+
     if not queueUserids[queueid] then
         queueUserids[queueid] = {}
     end
-
+    
     --根据rate的大小插入队列
     local index = 1
     for i, v in ipairs(queueUserids[queueid]) do
-        if rate > users[i].rate then
+        if rate > users[v].rate then
             index = i
             break
         end
     end
     table.insert(queueUserids[queueid], index, userid)
+
     return true
 end
 
 -- 离开队列
 function CMD.leaveQueue(userid)
-    leaveQueue(userid)
+    return leaveQueue(userid)
 end
 
 skynet.start(function()

@@ -65,6 +65,41 @@ local function checkStatus()
 	end
 end
 
+-- 进入匹配
+local function enterMatch(args)
+	local matchServer = skynet.localname(".match")
+	if not matchServer then
+		return {code = 1, msg ="匹配服务异常"}
+	else
+		local b = skynet.call(matchServer, "lua", "enterQueue", skynet.self(), userid, args.gameSubid, 0)
+		if b then
+			setUserStatus(CONFIG.USER_STATUS.MATCHING)
+			report("reportUserStatus", {status = CONFIG.USER_STATUS.MATCHING, gameid = 0})
+			return {code = 0, msg ="进入匹配列队成功"}
+		else
+			return {code = 2, msg ="进入匹配列队失败"}
+		end
+	end
+end
+
+-- 离开匹配
+local function leaveMatch()
+	local matchServer = skynet.localname(".match")
+	if not matchServer then
+		return {code = 1, msg ="匹配服务异常"}
+	else
+		local b = skynet.call(matchServer, "lua", "leaveQueue", userid)
+		if b then
+			setUserStatus(CONFIG.USER_STATUS.ONLINE)
+			report("reportUserStatus", {status = CONFIG.USER_STATUS.ONLINE, gameid = 0})
+			return {code = 0, msg ="离开匹配列队成功"}
+		else
+			return {code = 2, msg ="离开匹配列队失败"}
+		end
+	end
+
+end
+
 function REQUEST:get()
 	print("get", self.what)
 	local r = skynet.call("SIMPLEDB", "lua", "get", self.what)
@@ -125,18 +160,10 @@ end
 
 -- 匹配
 function REQUEST:match(args)
-	local matchServer = skynet.localname(".match")
-	if not matchServer then
-		return {code = 1, msg ="匹配服务异常"}
+	if args.type == 0 then
+		return enterMatch(args)
 	else
-		local b = skynet.call(matchServer, "lua", "enterQueue", skynet.self(), userid, 0)
-		if b then
-			setUserStatus(CONFIG.USER_STATUS.MATCHING)
-			report("reportUserStatus", {status = CONFIG.USER_STATUS.MATCHING, gameid = 0})
-			return {code = 0, msg ="进入匹配列队成功"}
-		else
-			return {code = 2, msg ="进入匹配列队失败"}
-		end
+		return leaveMatch(args)
 	end
 end
 
@@ -241,6 +268,11 @@ end
 
 function CMD.disconnect()
 	-- todo: do something before exit
+	if userStatus == CONFIG.USER_STATUS.MATCHING then
+		local matchServer = skynet.localname(".match")
+		skynet.send(matchServer, "lua", "leaveQueue", userid)
+	end
+
 	setUserStatus(CONFIG.USER_STATUS.OFFLINE)
 	LOG.info("agent disconnect")
 	skynet.exit()
