@@ -12,7 +12,7 @@ local CMD = {}
 local REQUEST = {}
 local client_fd
 local leftTime = 0
-local dTime = 15
+local dTime = 15 -- 心跳时间
 local bAuth = false
 local userid = 0
 local userStatus = 0
@@ -192,7 +192,7 @@ function REQUEST:auth(args)
 	return {code = 0, msg = "success"}
 end
 
--- 请求分发
+-- 客户端请求分发
 local function request(name, args, response)
 	LOG.info("request %s", name)
 	if not bAuth and name ~= "auth" then
