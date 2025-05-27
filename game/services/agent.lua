@@ -234,6 +234,12 @@ skynet.register_protocol {
 	end
 }
 
+-- 进入游戏
+function CMD.enterGame(gamedata)
+	setUserStatus(CONFIG.USER_STATUS.ENTERGAME)
+	report("reportUserStatus", {status = CONFIG.USER_STATUS.ENTERGAME, gameid = 0})
+end
+
 function CMD.content()
 	LOG.info("agent content")
 	report("reportContent",{code = 1})
@@ -282,6 +288,8 @@ skynet.start(function()
 	skynet.dispatch("lua", function(_,_, command, ...)
 		--skynet.trace()
 		local f = CMD[command]
-		skynet.ret(skynet.pack(f(...)))
+		if f then
+			skynet.ret(skynet.pack(f(...)))
+		end
 	end)
 end)

@@ -12,7 +12,7 @@ local function reportToAgent(userid,gamedata)
     local user = users[userid]
     local agent = user.agent
 
-    skynet.call(agent, "lua", "enterGame", userid2,gamedata)
+    skynet.send(agent, "lua", "enterGame", gamedata)
 end
 
 -- 离开队列
@@ -39,14 +39,15 @@ end
 -- 匹配成功
 local function matchSuccess(userid1, userid2)
     -- 1.创建游戏
-    -- 2.删除queue里的用户
-    -- 3.通知agent
+    -- 2.通知agent
+    -- 3.删除queue里的用户
+    reportToAgent(userid1, {})
+    reportToAgent(userid2, {})
     
     leaveQueue(userid1)
     leaveQueue(userid2)
 
-    reportToAgent(userid1, {})
-    reportToAgent(userid2, {})
+    
 end
 
 -- 检查队列
@@ -55,7 +56,7 @@ local function checkQueue(queueid)
     local que = queueUserids[queueid]
     -- 循环前一个跟后一个比较rate，差值小于0.05，匹配成功
     for i = 1, #que do
-        if i < #que - 1 then
+        if i < #que then
             local userid1 = que[i]
             local userid2 = que[i+1]
             local user1 = users[userid1]
