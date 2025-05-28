@@ -9,6 +9,19 @@ local queueNum = 4       -- 匹配队列数量
 local queueUserids = {}  -- queueUserids[gameid][queueid] = {userid1, ...}
 local dTime = 1          -- 匹配检查间隔（秒）
 
+local function checkGame(gameid, queueid)
+    local gameConfig = CONFIG.MATCH_GAMES[gameid]
+    if not gameConfig then
+        return false
+    end
+
+    if queueid > gameConfig.queueNum then
+        return false
+    end
+
+    return true
+end
+
 -- 匹配成功后通知agent
 local function reportToAgent(userid,gamedata)
     local user = users[userid]
@@ -99,6 +112,14 @@ end
 -- 玩家进入匹配队列
 function CMD.enterQueue(agent, userid, gameid, queueid, rate)
     LOG.info("enterQueue %d %d %d", userid, gameid, queueid)
+    if not gameid or not queueid or queueid == 0 then
+        return false
+    end
+    
+    if not checkGame(gameid, queueid) then
+        return false
+    end
+
     if not users[userid] then
         users[userid] = {
             userid = userid,
@@ -111,6 +132,7 @@ function CMD.enterQueue(agent, userid, gameid, queueid, rate)
     else
         return false
     end
+
     if not queueUserids[gameid] then
         queueUserids[gameid] = {}
     end
