@@ -272,6 +272,7 @@ function CMD.start(conf)
 	skynet.call(gate, "lua", "forward", fd, fd, skynet.self())
 end
 
+-- 断开连接
 function CMD.disconnect()
 	-- todo: do something before exit
 	if userStatus == CONFIG.USER_STATUS.MATCHING then
