@@ -76,7 +76,7 @@ local function enterMatch(args)
 	if not matchServer then
 		return {code = 1, msg ="匹配服务异常"}
 	else
-		local b = skynet.call(matchServer, "lua", "enterQueue", skynet.self(), userid, args.gameSubid, 0)
+		local b = skynet.call(matchServer, "lua", "enterQueue", skynet.self(), userid, args.gameid, args.gameSubid, 0)
 		if b then
 			setUserStatus(CONFIG.USER_STATUS.MATCHING)
 			report("reportUserStatus", {status = CONFIG.USER_STATUS.MATCHING, gameid = 0})
