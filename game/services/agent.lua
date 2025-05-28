@@ -1,3 +1,5 @@
+-- agent.lua
+-- 玩家代理服务，负责与客户端通信、处理玩家请求、心跳、状态和匹配等
 local skynet = require "skynet"
 local websocket = require "http.websocket"
 local sproto = require "sproto"
@@ -12,39 +14,42 @@ local CMD = {}
 local REQUEST = {}
 local client_fd
 local leftTime = 0
-local dTime = 15 -- 心跳时间
-local bAuth = false
+local dTime = 15 -- 心跳时间（秒）
+local bAuth = false -- 是否已认证
 local userid = 0
 local userStatus = 0
 local reportsessionid = 0
 
+-- 发送数据包给客户端
 local function send_package(pack)
 	skynet.call(gate, "lua", "send", client_fd, pack)
 end
 
+-- 上报玩家状态或消息给客户端
 local function report(name, data)
 	reportsessionid = reportsessionid + 1
 	send_request = host:attach(sprotoloader.load(2))
 	send_package(send_request(name,data, reportsessionid))
 end
 
+-- 关闭连接
 local function close()
 	LOG.info("agent close")
 	skynet.call(gate, "lua", "kick", client_fd)
 	--skynet.exit()
 end
 
+-- 获取数据库服务句柄
 local function getDB()
 	local dbserver = skynet.localname(".dbserver")
 	if not dbserver then
 		LOG.error("wsgate login error: dbserver not started")
 		return
 	end
-
 	return dbserver
 end
 
--- 设置用户状态
+-- 设置用户状态到数据库
 local function setUserStatus(status, gameid)
 	if not status then return end
 	userStatus = status
@@ -52,7 +57,7 @@ local function setUserStatus(status, gameid)
 	skynet.call(db, "lua", "func", "setUserStatus", userid, status, gameid)
 end
 
--- 检查用户状态
+-- 检查并同步用户状态
 local function checkStatus()
 	local db = getDB()
 	local status = skynet.call(db, "lua", "func", "getUserStatus", userid)
@@ -65,7 +70,7 @@ local function checkStatus()
 	end
 end
 
--- 进入匹配
+-- 进入匹配队列
 local function enterMatch(args)
 	local matchServer = skynet.localname(".match")
 	if not matchServer then
@@ -82,7 +87,7 @@ local function enterMatch(args)
 	end
 end
 
--- 离开匹配
+-- 离开匹配队列
 local function leaveMatch()
 	local matchServer = skynet.localname(".match")
 	if not matchServer then
@@ -97,9 +102,9 @@ local function leaveMatch()
 			return {code = 2, msg ="离开匹配列队失败"}
 		end
 	end
-
 end
 
+-- 以下为客户端请求处理函数（REQUEST表）
 function REQUEST:get()
 	print("get", self.what)
 	local r = skynet.call("SIMPLEDB", "lua", "get", self.what)
@@ -108,20 +113,21 @@ end
 
 function REQUEST:set()
 	print("set", self.what, self.value)
-	local r = skynet.call("SIMPLEDB", "lua", "set", self.what, self.value)
+	skynet.call("SIMPLEDB", "lua", "set", self.what, self.value)
 end
 
--- 心跳
+-- 心跳包处理，刷新活跃时间
 function REQUEST:heartbeat()
 	leftTime = os.time()
 	return { timestamp = leftTime }
 end
 
+-- 客户端主动退出
 function REQUEST:quit()
 	skynet.call(WATCHDOG, "lua", "close", client_fd)
 end
 
--- 用户数据
+-- 获取用户详细数据
 function REQUEST:userData(args)
 	local db =getDB()
 	local userData = skynet.call(db, "lua", "func", "getUserData", userid)
@@ -129,7 +135,7 @@ function REQUEST:userData(args)
 	return userData
 end
 
--- 用户财富
+-- 获取用户财富信息
 function REQUEST:userRiches(args)
 	local db =getDB()
 	local userRiches = skynet.call(db, "lua", "func", "getUserRiches", userid)
@@ -140,14 +146,12 @@ function REQUEST:userRiches(args)
 		table.insert(richType, v.richType)
 		table.insert(richNums, v.richNums)
 	end
-
 	LOG.info("richType %s", UTILS.tableToString(richType))
 	LOG.info("richNums %s", UTILS.tableToString(richNums))
-
 	return {richType = richType, richNums = richNums}
 end
 
--- 用户状态
+-- 获取用户状态
 function REQUEST:userStatus(args)
 	local db = getDB()
 	local status = skynet.call(db, "lua", "func", "getUserStatus", userid)
@@ -158,7 +162,7 @@ function REQUEST:userStatus(args)
 	end
 end
 
--- 匹配
+-- 匹配请求处理
 function REQUEST:match(args)
 	if args.type == 0 then
 		return enterMatch(args)
@@ -167,7 +171,7 @@ function REQUEST:match(args)
 	end
 end
 
--- 认证
+-- 认证请求处理
 function REQUEST:auth(args)
 	LOG.info("auth username %s, password %s", args.userid, args.password)
 	local db =getDB()
@@ -175,16 +179,13 @@ function REQUEST:auth(args)
 	if not authInfo then
 		return {code = 1, msg = "acc failed"}
 	end
-
 	if authInfo.secret ~= args.password then
 		return {code = 2, msg = "pass failed"}
 	end
-
 	if authInfo.subid ~= args.subid then
 		return {code = 3, msg = "subid failed"}
 	end
 	skynet.call(db, "lua", "func", "addSubid", args.userid, authInfo.subid + 1)
-
 	bAuth = true
 	userid = args.userid
 	leftTime = os.time()
@@ -205,6 +206,7 @@ local function request(name, args, response)
 	end
 end
 
+-- 注册客户端协议，处理客户端消息
 skynet.register_protocol {
 	name = "client",
 	id = skynet.PTYPE_CLIENT,
@@ -215,9 +217,8 @@ skynet.register_protocol {
 	end,
 	dispatch = function (fd, _, type, ...)
 		LOG.info("agent dispatch fd %d, type %s", fd, type)
-		assert(fd == client_fd)	-- You can use fd to reply message
-		skynet.ignoreret()	-- session is fd, don't call skynet.ret
-		--skynet.trace()
+		assert(fd == client_fd) -- 只能处理自己的fd
+		skynet.ignoreret() -- session是fd，不需要返回
 		if type == "REQUEST" then
 			local ok, result  = pcall(request, ...)
 			if ok then
@@ -234,17 +235,20 @@ skynet.register_protocol {
 	end
 }
 
+-- CMD表：服务内部命令处理
 -- 进入游戏
 function CMD.enterGame(gamedata)
 	setUserStatus(CONFIG.USER_STATUS.ENTERGAME)
 	report("reportUserStatus", {status = CONFIG.USER_STATUS.ENTERGAME, gameid = 0})
 end
 
+-- 内容推送
 function CMD.content()
 	LOG.info("agent content")
 	report("reportContent",{code = 1})
 end
 
+-- 启动agent服务，初始化协议和心跳检测
 function CMD.start(conf)
 	local fd = conf.client
 	gate = conf.gate
@@ -253,11 +257,9 @@ function CMD.start(conf)
 	-- slot 1,2 set at main.lua
 	host = sprotoloader.load(1):host "package"
 	leftTime = os.time()
-	
+	-- 启动心跳检测协程
 	skynet.fork(function()
 		while true do
-			-- 测试 服务的主动推送协议
-			-- send_package(send_request("reportMsg",{msg = "test", time = os.time()}, 1))
 			local now = os.time()
 			if now - leftTime >= dTime then
 				LOG.info("agent heartbeat fd %d now %d leftTime %d", client_fd, now, leftTime)
@@ -267,27 +269,23 @@ function CMD.start(conf)
 			skynet.sleep(dTime * 100)
 		end
 	end)
-
-	
 	skynet.call(gate, "lua", "forward", fd, fd, skynet.self())
 end
 
--- 断开连接
+-- 断开连接，清理状态
 function CMD.disconnect()
-	-- todo: do something before exit
 	if userStatus == CONFIG.USER_STATUS.MATCHING then
 		local matchServer = skynet.localname(".match")
 		skynet.send(matchServer, "lua", "leaveQueue", userid)
 	end
-
 	setUserStatus(CONFIG.USER_STATUS.OFFLINE)
 	LOG.info("agent disconnect")
 	skynet.exit()
 end
 
+-- 启动服务，分发命令
 skynet.start(function()
 	skynet.dispatch("lua", function(_,_, command, ...)
-		--skynet.trace()
 		local f = CMD[command]
 		if f then
 			skynet.ret(skynet.pack(f(...)))

@@ -1,11 +1,14 @@
+-- wsloginserver.lua
+-- WebSocket 登录认证底层实现，负责加密握手、token校验和连接管理
 local skynet = require "skynet"
 local websocket = require "http.websocket"
 local socket = require "skynet.socket"
 local crypt = require "skynet.crypt"
 require "skynet.manager"
--- WebSocket认证流程
+
+-- WebSocket认证流程，完成加密握手和token解密
 local function ws_auth(fd)
-    -- 生成挑战
+    -- 生成挑战字符串，防止重放攻击
     local challenge = crypt.randomkey()
     local challenge_b64 = crypt.base64encode(challenge)
     LOG.info("login challenge_b64 %s", challenge_b64)
@@ -14,7 +17,6 @@ local function ws_auth(fd)
     -- 读取客户端密钥
     local client_key = websocket.read(fd)
     LOG.info("login client_key_b64 %s", client_key)
-    
     client_key = crypt.base64decode(client_key)
     if #client_key ~= 8 then
         LOG.info("Invalid client key length")
@@ -29,21 +31,15 @@ local function ws_auth(fd)
 
     -- 计算共享密钥
     local secret = crypt.dhsecret(client_key, server_key)
-    -- secret = string.char(0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08)
-    -- local tmpToken = "dGVzdFVzZXI=@Z2FtZVNlcnZlcg==:cGFzc3dvcmQ="
-    -- local tmpToken2 = crypt.desencode(secret, tmpToken)
-    -- LOG.info("auth tmpToken2 %s", crypt.base64encode(tmpToken2))
-    
-    -- 验证HMAC
+    -- 验证HMAC，确保通信安全
     local response = websocket.read(fd)
     local hmac = crypt.hmac64(challenge, secret)
     local client_hmac = crypt.base64decode(response)
     if hmac ~= client_hmac then
         error("HMAC validation failed")
     end
-    
     LOG.info("auth handshake success secret %s", crypt.hexencode(secret))
-    -- 解密Token
+    -- 解密Token，获取用户信息
     local etoken = websocket.read(fd)
     LOG.info("auth etoken %s", etoken)
     local token = crypt.desdecode(secret, crypt.base64decode(etoken))
@@ -51,7 +47,7 @@ local function ws_auth(fd)
     return token, secret
 end
 
--- WebSocket连接处理器
+-- WebSocket连接处理器，负责整个登录流程
 local function handle_ws_connection(fd, addr, conf)
     local ok, token, secret = pcall(ws_auth, fd)
     if not ok then
@@ -59,7 +55,6 @@ local function handle_ws_connection(fd, addr, conf)
         websocket.close(fd)
         return
     end
-
     -- 调用认证逻辑
     local ok, srv, uid, loginType = pcall(conf.auth_handler, token)
     if not ok then
@@ -67,7 +62,6 @@ local function handle_ws_connection(fd, addr, conf)
         websocket.close(fd)
         return
     end
-
     -- 调用登录逻辑
     local ok, subid = pcall(conf.login_handler, srv, uid, secret, loginType)
     if not ok then
@@ -75,13 +69,13 @@ local function handle_ws_connection(fd, addr, conf)
         websocket.close(fd)
         return
     end
-    --local subid = "1234567890"
     LOG.info("login subid %s", subid)
-    -- 返回成功
+    -- 返回登录成功信息
     websocket.write(fd, "200 "..crypt.base64encode(subid) .. " " .. crypt.base64encode(uid), "binary")
     websocket.close(fd)
 end
 
+-- 启动WebSocket登录服务，监听端口并处理连接
 local function login(conf)
     assert(conf.login_handler)
 	assert(conf.command_handler)
@@ -115,6 +109,7 @@ local function login(conf)
             end
         end)
 
+        -- 处理命令分发
         skynet.dispatch("lua", function(_,source,command, ...)
             skynet.ret(skynet.pack(conf.command_handler(command, ...)))
         end)
@@ -122,7 +117,6 @@ local function login(conf)
         local name = "." .. (conf.name or 'wslogin')
         skynet.register(name)
     end) 
-    
 end
 
 return login

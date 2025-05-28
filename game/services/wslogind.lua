@@ -1,23 +1,27 @@
+-- wslogind.lua
+-- WebSocket 登录服务，负责处理用户登录、认证和网关注册
 local login = require "wsloginserver"
 local crypt = require "skynet.crypt"
 local skynet = require "skynet"
 
+-- 服务器配置信息
 local server = {
-	host = "0.0.0.0",
-	port = 8002,
-	multilogin = false,	-- disallow multilogin
-	name = "ws_login_master",
+	host = "0.0.0.0",           -- 监听地址
+	port = 8002,                -- 监听端口
+	multilogin = false,         -- 是否允许多端登录
+	name = "ws_login_master",  -- 服务名
 }
 
-local server_list = {}
-local user_online = {}
-local user_login = {}
+local server_list = {}    -- 注册的网关服务器列表
+local user_online = {}    -- 在线用户表
+local user_login = {}     -- 登录中的用户表
 local login_type = {
-	account = true,
+	account = true,           -- 允许的登录类型
 }
 
+-- 认证处理函数，校验token并返回用户信息
 function server.auth_handler(token)
-	-- the token is base64(user)@base64(server):base64(password)
+	-- token格式：base64(user)@base64(server):base64(password)#base64(loginType)
 	local user, server, password, loginType = token:match("([^@]+)@([^:]+):([^#]+)#(.+)")
 	user = crypt.base64decode(user)
 	server = crypt.base64decode(server)
@@ -30,17 +34,18 @@ function server.auth_handler(token)
 		LOG.error("wsgate login error: dbserver not started")
 		return
 	end
+	-- 校验用户名和密码
 	local userInfo = skynet.call(dbserver, "lua", "func", "login", user,password,loginType)
-
 	assert(userInfo, "account or password error")
 	return server, userInfo.userid, loginType
 end
 
+-- 登录处理函数，分配subid
 function server.login_handler(server, userid, secret, loginType)
 	LOG.info("111")
 	LOG.info(string.format("%d@%s is login, secret is %s", userid, server, crypt.hexencode(secret)))
 	local gameserver = assert(server_list[server], "Unknown server")
-	-- only one can login, because disallow multilogin
+	-- 只允许一个用户在线
 	-- local last = user_online[numid]
 	-- if last then
 	-- 	skynet.call(last.address, "lua", "kickByNumid", numid, last.subid)
@@ -50,13 +55,13 @@ function server.login_handler(server, userid, secret, loginType)
 	-- end
 
 	local subid = tostring(skynet.call(gameserver, "lua", "login", userid, crypt.hexencode(secret), loginType))
-	-- LOG.info(string.format("%d@%s login success, subid is %s", numid, server, subid))
 	-- user_online[numid] = { address = gameserver, subid = subid , secret = crypt.hexencode(secret)}
 	return subid
 end
 
 local CMD = {}
 
+-- 注册网关服务器
 function CMD.register_gate(server, address)
 	LOG.info(string.format("Register gate %s %s", server, address))
 	server_list[server] = address
@@ -70,9 +75,11 @@ end
 -- 	end
 -- end
 
+-- 命令分发处理
 function server.command_handler(command, ...)
 	local f = assert(CMD[command])
 	return f(...)
 end
 
+-- 启动WebSocket登录服务
 login(server)

@@ -1,4 +1,5 @@
 -- game/preload.lua
+-- 全局预加载脚本，初始化全局配置、常量、工具函数、日志、性能统计和错误处理
 local skynet = require "skynet"
 
 -- 全局配置
@@ -37,7 +38,7 @@ _G.GAME_CONST = {
 
 -- 全局工具函数
 _G.UTILS = {
-    -- 深拷贝
+    -- 深拷贝一个表，防止数据被意外修改
     deepcopy = function(orig)
         local copy
         if type(orig) == 'table' then
@@ -52,7 +53,7 @@ _G.UTILS = {
         return copy
     end,
     
-    -- 表合并
+    -- 合并两个表，把t2的内容合并到t1
     table_merge = function(t1, t2)
         for k, v in pairs(t2) do
             t1[k] = v
@@ -60,7 +61,7 @@ _G.UTILS = {
         return t1
     end,
     
-    -- 字符串分割
+    -- 按分隔符分割字符串，返回分割后的表
     string_split = function(str, delimiter)
         local result = {}
         local from = 1
@@ -74,7 +75,7 @@ _G.UTILS = {
         return result
     end,
 
-    -- 序列化table 成string
+    -- 把table序列化成字符串，方便打印调试
     tableToString=function(tbl, indent)
         if not indent then indent = 0 end
         local str = ""
@@ -100,7 +101,7 @@ _G.UTILS = {
     end,
 }
 
--- 日志工具
+-- 日志工具，方便输出调试信息
 local LOG_LEVEL = {
     DEBUG = 1,
     INFO = 2,
@@ -128,9 +129,9 @@ _G.LOG = {
     end,
 }
 
--- 性能统计
+-- 性能统计相关工具
 _G.STAT = {
-    -- 计时开始
+    -- 计时开始，记录某个操作的起始时间
     timing_start = function(key)
         if not _G.STAT.timers then
             _G.STAT.timers = {}
@@ -138,7 +139,7 @@ _G.STAT = {
         _G.STAT.timers[key] = skynet.now()
     end,
     
-    -- 计时结束
+    -- 计时结束，返回耗时
     timing_end = function(key)
         if not _G.STAT.timers or not _G.STAT.timers[key] then
             return 0
@@ -148,7 +149,7 @@ _G.STAT = {
         return cost
     end,
     
-    -- 计数增加
+    -- 计数器增加
     counter_inc = function(key, value)
         if not _G.STAT.counters then
             _G.STAT.counters = {}
@@ -157,9 +158,9 @@ _G.STAT = {
     end,
 }
 
--- 错误处理
+-- 错误处理相关工具
 _G.ERROR = {
-    -- 创建错误对象
+    -- 创建一个错误对象
     new = function(code, msg)
         return {
             code = code,
@@ -167,7 +168,7 @@ _G.ERROR = {
         }
     end,
     
-    -- 抛出错误
+    -- 抛出错误，终止程序
     throw = function(code, msg)
         error(string.format("ERROR[%d]: %s", code, msg))
     end,
