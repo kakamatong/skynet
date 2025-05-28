@@ -43,8 +43,13 @@ local function matchSuccess(userid1, userid2)
     -- 1.创建游戏
     -- 2.通知agent
     -- 3.删除queue里的用户
-    reportToAgent(userid1, {})
-    reportToAgent(userid2, {})
+    local playerids = {userid1, userid2}
+    local gameid = 10001
+    local gameData = {}
+    local gameManager = skynet.localname(".gameManager")
+    local roomid = skynet.call(gameManager, "lua", "createGame", gameid, playerids, gameData)
+    reportToAgent(userid1, {gameid = gameid, roomid = roomid})
+    reportToAgent(userid2, {gameid = gameid, roomid = roomid})
     
     leaveQueue(userid1)
     leaveQueue(userid2)
@@ -128,6 +133,6 @@ skynet.start(function()
 		--skynet.trace()
 		local f = CMD[command]
 		skynet.ret(skynet.pack(f(...)))
-        skynet.register("." .. name)
 	end)
+    skynet.register("." .. name)
 end)

@@ -37,8 +37,8 @@ skynet.start(function()
     skynet.dispatch("lua", function(session, source, cmd, ...)
         local f = CMD[cmd]
         if f then
-            f(source, ...)
+            skynet.ret(skynet.pack(f(...)))
         end
-        skynet.register("." .. name)
     end)
+    skynet.register("." .. name)
 end)
