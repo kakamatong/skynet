@@ -26,15 +26,6 @@ skynet.start(function()
 	-- 启动WebSocket登录服务
 	local loginservice = skynet.newservice("wslogind")
 
-	-- 启动TCP网关服务器
-	local watchdog = skynet.newservice("watchdog")
-	local addr,port = skynet.call(watchdog, "lua", "start", {
-		port = 9001,
-		maxclient = max_client,
-		nodelay = true,
-	})
-	LOG.info("Watchdog listen on " .. addr .. ":" .. port)
-
 	-- 启动WebSocket网关服务器
 	local wswatchdog = skynet.newservice("wswatchdog")
 	local addr,port = skynet.call(wswatchdog, "lua", "start", {
