@@ -15,6 +15,8 @@ skynet.start(function()
 	-- 启动调试控制台，监听8000端口
 	skynet.newservice("debug_console",8000)
 
+	skynet.newservice("gameManager")
+
 	-- 启动匹配服务
 	local match = skynet.newservice("match")
 	skynet.call(match, "lua", "start")
